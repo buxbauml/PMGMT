@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
@@ -23,7 +23,7 @@ import {
   type UpdateWorkspaceFormValues,
   type InviteMembersFormValues,
 } from '@/lib/validations/workspace'
-import { MOCK_USER_ID } from '@/lib/mock-data/workspaces'
+import { useAuth } from '@/hooks/useAuth'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -250,6 +250,12 @@ function GeneralTab({
 
 // --- Members Tab ---
 
+interface InviteLink {
+  email: string
+  link: string
+  token: string
+}
+
 interface MembersTabProps {
   workspace: Workspace
   members: WorkspaceMember[]
@@ -258,15 +264,19 @@ interface MembersTabProps {
   onInviteMembers: (
     workspaceId: string,
     input: { emails: string[]; role: Exclude<WorkspaceRole, 'owner'> }
-  ) => Promise<{ error: string | null }>
+  ) => Promise<{ error: string | null; inviteLinks?: InviteLink[] }>
   onRemoveMember: (
     workspaceId: string,
     memberId: string
-  ) => Promise<{ error: string | null }>
+  ) => Promise<{ error: string | null; unassignedTasks: number }>
   onUpdateRole: (
     workspaceId: string,
     memberId: string,
     role: WorkspaceRole
+  ) => Promise<{ error: string | null }>
+  onTransferOwnership: (
+    workspaceId: string,
+    newOwnerId: string
   ) => Promise<{ error: string | null }>
 }
 
@@ -293,9 +303,33 @@ function MembersTab({
   onInviteMembers,
   onRemoveMember,
   onUpdateRole,
+  onTransferOwnership,
 }: MembersTabProps) {
+  const { user } = useAuth()
   const [isInviting, setIsInviting] = useState(false)
   const [inviteSuccess, setInviteSuccess] = useState(false)
+  const [inviteLinks, setInviteLinks] = useState<InviteLink[]>([])
+  const [inviteError, setInviteError] = useState<string | null>(null)
+  const [removeWarning, setRemoveWarning] = useState<string | null>(null)
+
+  // Transfer ownership state
+  const [showTransferDialog, setShowTransferDialog] = useState(false)
+  const [transferTargetMemberId, setTransferTargetMemberId] = useState<string | null>(null)
+  const [transferTargetMemberName, setTransferTargetMemberName] = useState<string>('')
+  const [isTransferring, setIsTransferring] = useState(false)
+
+  // Listen for transfer ownership events
+  useEffect(() => {
+    const handleTransferEvent = (e: Event) => {
+      const customEvent = e as CustomEvent<{ memberId: string; memberName: string }>
+      setTransferTargetMemberId(customEvent.detail.memberId)
+      setTransferTargetMemberName(customEvent.detail.memberName)
+      setShowTransferDialog(true)
+    }
+
+    window.addEventListener('transfer-ownership', handleTransferEvent)
+    return () => window.removeEventListener('transfer-ownership', handleTransferEvent)
+  }, [])
 
   const form = useForm<InviteMembersFormValues>({
     resolver: zodResolver(inviteMembersSchema),
@@ -305,8 +339,26 @@ function MembersTab({
     },
   })
 
+  async function handleTransferOwnership() {
+    if (!transferTargetMemberId) return
+
+    setIsTransferring(true)
+    try {
+      const result = await onTransferOwnership(workspace.id, transferTargetMemberId)
+      if (!result.error) {
+        setShowTransferDialog(false)
+        setTransferTargetMemberId(null)
+        setTransferTargetMemberName('')
+      }
+    } finally {
+      setIsTransferring(false)
+    }
+  }
+
   async function onSubmitInvite(values: InviteMembersFormValues) {
     setIsInviting(true)
+    setInviteError(null)
+    setInviteLinks([])
     try {
       const emails = values.emails
         .split(',')
@@ -319,7 +371,12 @@ function MembersTab({
       if (!result.error) {
         form.reset()
         setInviteSuccess(true)
-        setTimeout(() => setInviteSuccess(false), 3000)
+        if (result.inviteLinks && result.inviteLinks.length > 0) {
+          setInviteLinks(result.inviteLinks)
+        }
+        setTimeout(() => setInviteSuccess(false), 5000)
+      } else {
+        setInviteError(result.error)
       }
     } finally {
       setIsInviting(false)
@@ -333,6 +390,12 @@ function MembersTab({
         <h3 className="mb-3 text-sm font-medium">
           Members ({members.length})
         </h3>
+        {removeWarning && (
+          <div className="mb-3 flex items-start gap-2 rounded-md border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-200">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            <p>{removeWarning}</p>
+          </div>
+        )}
         <Table>
           <TableHeader>
             <TableRow>
@@ -343,7 +406,7 @@ function MembersTab({
           </TableHeader>
           <TableBody>
             {members.map((member) => {
-              const isSelf = member.user_id === MOCK_USER_ID
+              const isSelf = member.user_id === user?.id
               const isMemberOwner = member.role === 'owner'
               const canRemove = canManageMembers && !isSelf && !isMemberOwner
 
@@ -418,15 +481,42 @@ function MembersTab({
                               </DropdownMenuItem>
                             )}
                             {isOwner &&
+                              !isSelf &&
+                              !isMemberOwner &&
+                              (member.role === 'admin' ||
+                                member.role === 'member') && (
+                                <>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onClick={() => {
+                                      // Transfer ownership - will be handled via dialog
+                                      const event = new CustomEvent('transfer-ownership', {
+                                        detail: { memberId: member.user_id, memberName: member.user_email }
+                                      })
+                                      window.dispatchEvent(event)
+                                    }}
+                                    className="text-orange-600 focus:text-orange-600"
+                                  >
+                                    Transfer ownership
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+                            {isOwner &&
                               (member.role === 'admin' ||
                                 member.role === 'member') && (
                                 <DropdownMenuSeparator />
                               )}
                             {canRemove && (
                               <DropdownMenuItem
-                                onClick={() =>
-                                  onRemoveMember(workspace.id, member.id)
-                                }
+                                onClick={async () => {
+                                  const result = await onRemoveMember(workspace.id, member.id)
+                                  if (!result.error && result.unassignedTasks > 0) {
+                                    setRemoveWarning(
+                                      `${result.unassignedTasks} task${result.unassignedTasks === 1 ? ' was' : 's were'} unassigned because ${member.user_name || member.user_email} was removed.`
+                                    )
+                                    setTimeout(() => setRemoveWarning(null), 8000)
+                                  }
+                                }}
                                 className="text-destructive focus:text-destructive"
                               >
                                 <UserMinus className="mr-2 h-4 w-4" />
@@ -451,10 +541,48 @@ function MembersTab({
           <Separator />
           <div>
             <h3 className="mb-3 text-sm font-medium">Invite members</h3>
+            {inviteError && (
+              <div className="mb-3 rounded-md border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                {inviteError}
+              </div>
+            )}
             {inviteSuccess && (
-              <div className="mb-3 flex items-center gap-2 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-200">
-                <Send className="h-4 w-4" />
-                Invitations sent successfully!
+              <div className="mb-3 space-y-2">
+                <div className="flex items-center gap-2 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-200">
+                  <Send className="h-4 w-4 shrink-0" />
+                  Invitations created! Share the links below with your invitees.
+                </div>
+                {inviteLinks.length > 0 && (
+                  <div className="space-y-1.5">
+                    {inviteLinks.map((link) => (
+                      <div
+                        key={link.token}
+                        className="flex items-center gap-2 rounded-md border bg-muted/50 px-3 py-2 text-xs"
+                      >
+                        <span className="shrink-0 font-medium">
+                          {link.email}:
+                        </span>
+                        <input
+                          readOnly
+                          value={link.link}
+                          className="flex-1 bg-transparent text-muted-foreground outline-none"
+                          onClick={(e) => (e.target as HTMLInputElement).select()}
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 shrink-0 px-2 text-xs"
+                          onClick={() => {
+                            navigator.clipboard.writeText(link.link)
+                          }}
+                        >
+                          Copy
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
             <Form {...form}>
@@ -520,6 +648,45 @@ function MembersTab({
           </div>
         </>
       )}
+
+      {/* Transfer ownership dialog */}
+      <AlertDialog open={showTransferDialog} onOpenChange={setShowTransferDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Transfer workspace ownership?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You are about to transfer ownership of{' '}
+              <span className="font-semibold">{workspace.name}</span> to{' '}
+              <span className="font-semibold">{transferTargetMemberName}</span>.
+              <br />
+              <br />
+              After this transfer:
+              <ul className="mt-2 list-inside list-disc space-y-1 text-sm">
+                <li>They will become the workspace owner</li>
+                <li>You will be downgraded to admin</li>
+                <li>Only they can transfer ownership again</li>
+              </ul>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isTransferring}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleTransferOwnership}
+              disabled={isTransferring}
+              className="bg-orange-600 text-white hover:bg-orange-700"
+            >
+              {isTransferring ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Transferring...
+                </>
+              ) : (
+                'Transfer ownership'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
@@ -541,15 +708,19 @@ interface WorkspaceSettingsProps {
   onInviteMembers: (
     workspaceId: string,
     input: { emails: string[]; role: Exclude<WorkspaceRole, 'owner'> }
-  ) => Promise<{ error: string | null }>
+  ) => Promise<{ error: string | null; inviteLinks?: InviteLink[] }>
   onRemoveMember: (
     workspaceId: string,
     memberId: string
-  ) => Promise<{ error: string | null }>
+  ) => Promise<{ error: string | null; unassignedTasks: number }>
   onUpdateRole: (
     workspaceId: string,
     memberId: string,
     role: WorkspaceRole
+  ) => Promise<{ error: string | null }>
+  onTransferOwnership: (
+    workspaceId: string,
+    newOwnerId: string
   ) => Promise<{ error: string | null }>
 }
 
@@ -565,6 +736,7 @@ export function WorkspaceSettings({
   onInviteMembers,
   onRemoveMember,
   onUpdateRole,
+  onTransferOwnership,
 }: WorkspaceSettingsProps) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -603,6 +775,7 @@ export function WorkspaceSettings({
                 onInviteMembers={onInviteMembers}
                 onRemoveMember={onRemoveMember}
                 onUpdateRole={onUpdateRole}
+                onTransferOwnership={onTransferOwnership}
               />
             </TabsContent>
           </Tabs>

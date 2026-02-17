@@ -44,6 +44,7 @@ export async function GET(
       joined_at,
       last_accessed_at,
       profiles:user_id (
+        email,
         full_name,
         avatar_url
       )
@@ -66,7 +67,7 @@ export async function GET(
 
   // Flatten the profiles join
   const enrichedMembers = (members || []).map((member) => {
-    const profile = member.profiles as unknown as { full_name: string | null; avatar_url: string | null } | null
+    const profile = member.profiles as unknown as { email: string | null; full_name: string | null; avatar_url: string | null } | null
     return {
       id: member.id,
       workspace_id: member.workspace_id,
@@ -75,6 +76,7 @@ export async function GET(
       joined_at: member.joined_at,
       last_accessed_at: member.last_accessed_at,
       user_name: profile?.full_name || '',
+      user_email: profile?.email || '',
       user_avatar_url: profile?.avatar_url || null,
     }
   })

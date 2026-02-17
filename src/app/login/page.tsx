@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { Suspense, useState, useMemo } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { AlertCircle, Loader2 } from 'lucide-react'
@@ -23,7 +24,17 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 
-export default function LoginPage() {
+function LoginForm() {
+  const searchParams = useSearchParams()
+  const redirectTo = useMemo(() => {
+    const param = searchParams.get('redirect')
+    // Only allow relative paths (prevent open redirect attacks)
+    if (param && param.startsWith('/') && !param.startsWith('//')) {
+      return param
+    }
+    return '/'
+  }, [searchParams])
+
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const { isRateLimited, secondsUntilReset, recordAttempt } = useRateLimit({
@@ -65,7 +76,7 @@ export default function LoginPage() {
       }
 
       if (data.session) {
-        window.location.href = '/'
+        window.location.href = redirectTo
       }
     } catch {
       setError('A network error occurred. Please check your connection and try again.')
@@ -158,5 +169,19 @@ export default function LoginPage() {
         </CardFooter>
       </Card>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      }
+    >
+      <LoginForm />
+    </Suspense>
   )
 }

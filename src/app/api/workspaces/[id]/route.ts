@@ -64,7 +64,7 @@ export async function PATCH(
   const parsed = updateWorkspaceSchema.safeParse(body)
   if (!parsed.success) {
     return NextResponse.json(
-      { error: parsed.error.errors[0]?.message ?? 'Validation failed' },
+      { error: parsed.error.issues[0]?.message ?? 'Validation failed' },
       { status: 400 }
     )
   }

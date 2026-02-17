@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { useWorkspace } from '@/hooks/useWorkspace'
+import { useProject } from '@/hooks/useProject'
 import { Loader2, MailWarning } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 
@@ -10,6 +11,7 @@ import { AppHeader } from '@/components/app-header'
 import { WorkspaceEmptyState } from '@/components/workspace-empty-state'
 import { CreateWorkspaceDialog } from '@/components/create-workspace-dialog'
 import { WorkspaceSettings } from '@/components/workspace-settings'
+import { ProjectList } from '@/components/project-list'
 
 export default function Home() {
   const { isAuthenticated, isEmailVerified, loading, signOut, user } = useAuth()
@@ -26,7 +28,20 @@ export default function Home() {
     inviteMembers,
     removeMember,
     updateMemberRole,
+    transferOwnership,
   } = useWorkspace()
+
+  const {
+    projects,
+    allProjects,
+    loading: projectsLoading,
+    showArchived,
+    setShowArchived,
+    createProject,
+    updateProject,
+    archiveProject,
+    deleteProject,
+  } = useProject(activeWorkspace?.id ?? null)
 
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
@@ -114,12 +129,19 @@ export default function Home() {
                 </p>
               )}
             </div>
-            {/* Projects placeholder - PROJ-3 will add content here */}
-            <div className="rounded-lg border border-dashed p-12 text-center">
-              <p className="text-sm text-muted-foreground">
-                Projects will appear here once you create them.
-              </p>
-            </div>
+            {/* Projects section */}
+            <ProjectList
+              projects={projects}
+              allProjects={allProjects}
+              loading={projectsLoading}
+              showArchived={showArchived}
+              canArchive={canManageMembers}
+              onSetShowArchived={setShowArchived}
+              onCreateProject={createProject}
+              onUpdateProject={updateProject}
+              onArchiveProject={archiveProject}
+              onDeleteProject={deleteProject}
+            />
           </div>
         ) : null}
       </main>
@@ -148,6 +170,7 @@ export default function Home() {
           onInviteMembers={inviteMembers}
           onRemoveMember={removeMember}
           onUpdateRole={updateMemberRole}
+          onTransferOwnership={transferOwnership}
         />
       )}
     </div>

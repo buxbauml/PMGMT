@@ -49,7 +49,7 @@ export async function PATCH(
   const parsed = updateRoleSchema.safeParse(body)
   if (!parsed.success) {
     return NextResponse.json(
-      { error: parsed.error.errors[0]?.message ?? 'Validation failed' },
+      { error: parsed.error.issues[0]?.message ?? 'Validation failed' },
       { status: 400 }
     )
   }
@@ -179,6 +179,40 @@ export async function DELETE(
     .eq('id', targetMember.user_id)
     .eq('last_active_workspace_id', id)
 
+  // Unassign tasks assigned to the removed member in this workspace's projects
+  // Find all project IDs in this workspace, then set assignee_id to null for matching tasks
+  let unassignedCount = 0
+  try {
+    const { data: workspaceProjects } = await supabase
+      .from('projects')
+      .select('id')
+      .eq('workspace_id', id)
+
+    if (workspaceProjects && workspaceProjects.length > 0) {
+      const projectIds = workspaceProjects.map((p) => p.id)
+
+      // Count how many tasks will be unassigned (for the response)
+      const { count } = await supabase
+        .from('tasks')
+        .select('*', { count: 'exact', head: true })
+        .in('project_id', projectIds)
+        .eq('assignee_id', targetMember.user_id)
+
+      unassignedCount = count ?? 0
+
+      // Unassign the tasks
+      if (unassignedCount > 0) {
+        await supabase
+          .from('tasks')
+          .update({ assignee_id: null })
+          .in('project_id', projectIds)
+          .eq('assignee_id', targetMember.user_id)
+      }
+    }
+  } catch {
+    // Tasks table may not exist yet - continue with member removal
+  }
+
   const { error: deleteError } = await supabase
     .from('workspace_members')
     .delete()
@@ -192,5 +226,5 @@ export async function DELETE(
     )
   }
 
-  return NextResponse.json({ success: true })
+  return NextResponse.json({ success: true, unassigned_tasks: unassignedCount })
 }

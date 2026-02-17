@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase-server'
 import { inviteMembersSchema } from '@/lib/validations/workspace'
 import { checkRateLimit, recordRateLimitAttempt } from '@/lib/rate-limit'
+import { sendInvitationEmail } from '@/lib/email'
 
 // GET /api/workspaces/[id]/invitations - List pending invitations
 export async function GET(
@@ -114,7 +115,7 @@ export async function POST(
   const parsed = inviteMembersSchema.safeParse(body)
   if (!parsed.success) {
     return NextResponse.json(
-      { error: parsed.error.errors[0]?.message ?? 'Validation failed' },
+      { error: parsed.error.issues[0]?.message ?? 'Validation failed' },
       { status: 400 }
     )
   }
@@ -185,6 +186,36 @@ export async function POST(
     link: `${baseUrl}/invite/${inv.token}`,
     token: inv.token,
   }))
+
+  // Send invitation emails in the background (don't block the response)
+  // Fetch workspace name and inviter name for the email
+  const { data: workspace } = await supabase
+    .from('workspaces')
+    .select('name')
+    .eq('id', id)
+    .single()
+
+  const { data: inviterProfile } = await supabase
+    .from('profiles')
+    .select('full_name')
+    .eq('id', user.id)
+    .single()
+
+  const workspaceName = workspace?.name ?? 'a workspace'
+  const inviterName = inviterProfile?.full_name ?? user.email ?? 'Someone'
+
+  // Send emails (fire-and-forget, don't block the API response)
+  for (const link of inviteLinks) {
+    sendInvitationEmail({
+      to: link.email,
+      workspaceName,
+      inviterName,
+      role,
+      inviteLink: link.link,
+    }).catch((err) => {
+      console.error(`[invitations] Failed to send email to ${link.email}:`, err)
+    })
+  }
 
   return NextResponse.json(
     {

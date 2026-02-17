@@ -55,6 +55,18 @@ export async function POST(
     )
   }
 
+  // Verify that the user's email matches the invited email
+  if (user.email !== invitation.invited_email) {
+    return NextResponse.json(
+      {
+        error: 'This invitation was sent to a different email address',
+        invited_email: invitation.invited_email,
+        your_email: user.email,
+      },
+      { status: 403 }
+    )
+  }
+
   // Check if user is already a member
   const { data: existingMember } = await supabase
     .from('workspace_members')
