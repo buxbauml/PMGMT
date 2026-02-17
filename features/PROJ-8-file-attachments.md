@@ -1,6 +1,6 @@
 # PROJ-8: File Attachments
 
-## Status: In Review
+## Status: Deployed
 **Created:** 2026-02-14
 **Last Updated:** 2026-02-17
 
@@ -437,4 +437,8 @@ No new bugs found. All previously reported bugs have been resolved.
 - **Recommendation:** Deploy immediately. All acceptance criteria pass, all bugs from previous rounds are resolved, the security audit found no remaining issues, and the build compiles cleanly.
 
 ## Deployment
-_To be added by /deploy_
+- **Production URL:** https://pmgmt.vercel.app
+- **Deployed:** 2026-02-17
+- **Commit:** `dcde8d4` on `main`
+- **Database Migration:** `20260217_002_file_attachments.sql` applied
+- **Storage Bucket:** `task-attachments` (private, signed URLs)
