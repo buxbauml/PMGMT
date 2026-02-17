@@ -1,11 +1,11 @@
 'use client'
 
-import { useEffect, useState, use } from 'react'
+import { useEffect, useState, useCallback, useRef, use } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, CalendarDays, Kanban, Loader2 } from 'lucide-react'
+import { ArrowLeft, Loader2, LayoutList } from 'lucide-react'
 
 import type { Project } from '@/types/project'
-import type { Task, UpdateTaskInput } from '@/types/task'
+import type { Task, TaskStatus, UpdateTaskInput } from '@/types/task'
 
 import { useAuth } from '@/hooks/useAuth'
 import { useWorkspace } from '@/hooks/useWorkspace'
@@ -19,12 +19,14 @@ import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Button } from '@/components/ui/button'
 
-import { TaskEmptyState } from '@/components/task-empty-state'
-import { TaskTable } from '@/components/task-table'
+import { KanbanBoard } from '@/components/kanban-board'
 import { CreateTaskDialog } from '@/components/create-task-dialog'
 import { EditTaskDialog } from '@/components/edit-task-dialog'
 
-export default function ProjectDetailPage({
+import { supabase } from '@/lib/supabase'
+import { toast } from 'sonner'
+
+export default function KanbanBoardPage({
   params,
 }: {
   params: Promise<{ projectId: string }>
@@ -56,6 +58,12 @@ export default function ProjectDetailPage({
   const [showSettings, setShowSettings] = useState(false)
   const [showCreateTaskDialog, setShowCreateTaskDialog] = useState(false)
   const [editingTask, setEditingTask] = useState<Task | null>(null)
+  const editingTaskRef = useRef<Task | null>(null)
+
+  // Keep ref in sync for Realtime callback
+  useEffect(() => {
+    editingTaskRef.current = editingTask
+  }, [editingTask])
 
   // Fetch project details
   useEffect(() => {
@@ -91,13 +99,10 @@ export default function ProjectDetailPage({
     allTasks,
     loading: tasksLoading,
     error: tasksError,
-    filters,
-    setFilters,
-    hasActiveFilters,
-    clearFilters,
     createTask,
     updateTask,
     deleteTask,
+    refetch: refetchTasks,
   } = useTask(activeWorkspace?.id ?? null, projectId)
 
   const {
@@ -126,6 +131,40 @@ export default function ProjectDetailPage({
     }
   }, [allTasks, project])
 
+  // Supabase Realtime subscription for live updates
+  useEffect(() => {
+    if (!projectId) return
+
+    const channel = supabase
+      .channel(`kanban-tasks-${projectId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'tasks',
+          filter: `project_id=eq.${projectId}`,
+        },
+        (payload) => {
+          // If a task was deleted and is currently being edited, close the dialog
+          if (payload.eventType === 'DELETE' && payload.old) {
+            const deletedId = (payload.old as { id?: string }).id
+            if (deletedId && editingTaskRef.current?.id === deletedId) {
+              setEditingTask(null)
+              toast.info('Task was deleted by another user')
+            }
+          }
+          // Refetch all tasks when any change happens
+          refetchTasks()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [projectId, refetchTasks])
+
   // Redirect if not authenticated
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -147,11 +186,11 @@ export default function ProjectDetailPage({
       ? Math.round((project.completed_tasks / project.total_tasks) * 100)
       : 0
 
-  async function handleQuickStatusChange(
+  async function handleUpdateTaskStatus(
     taskId: string,
-    status: UpdateTaskInput['status']
+    status: TaskStatus
   ) {
-    return updateTask(taskId, { status: status! })
+    return updateTask(taskId, { status })
   }
 
   return (
@@ -170,13 +209,19 @@ export default function ProjectDetailPage({
 
       {/* Main content */}
       <main className="flex-1">
-        <div className="mx-auto w-full max-w-5xl px-4 py-8 md:px-6">
+        <div className="mx-auto w-full max-w-7xl px-4 py-8 md:px-6">
           {/* Back button */}
-          <div className="mb-6">
+          <div className="mb-6 flex items-center gap-2">
             <Button variant="ghost" size="sm" className="gap-1.5" asChild>
-              <Link href="/">
+              <Link href={`/projects/${projectId}`}>
                 <ArrowLeft className="h-4 w-4" />
-                Back to projects
+                Back to project
+              </Link>
+            </Button>
+            <Button variant="ghost" size="sm" className="gap-1.5" asChild>
+              <Link href={`/projects/${projectId}`}>
+                <LayoutList className="h-4 w-4" />
+                List view
               </Link>
             </Button>
           </div>
@@ -203,7 +248,7 @@ export default function ProjectDetailPage({
             </div>
           )}
 
-          {/* Project details */}
+          {/* Project details + Board */}
           {project && !projectLoading && !projectError && (
             <>
               {/* Page header */}
@@ -237,22 +282,6 @@ export default function ProjectDetailPage({
                     )}
                   </p>
                 </div>
-
-                {/* Sprint & Board links */}
-                <div className="mt-4 flex items-center gap-2">
-                  <Button variant="outline" size="sm" className="gap-1.5" asChild>
-                    <Link href={`/projects/${projectId}/sprints`}>
-                      <CalendarDays className="h-4 w-4" />
-                      Sprints
-                    </Link>
-                  </Button>
-                  <Button variant="outline" size="sm" className="gap-1.5" asChild>
-                    <Link href={`/projects/${projectId}/board`}>
-                      <Kanban className="h-4 w-4" />
-                      Board
-                    </Link>
-                  </Button>
-                </div>
               </div>
 
               {/* Tasks error */}
@@ -262,31 +291,19 @@ export default function ProjectDetailPage({
                 </div>
               )}
 
-              {/* Task section */}
-              {!tasksLoading && allTasks.length === 0 ? (
-                <TaskEmptyState
-                  onCreateTask={() => setShowCreateTaskDialog(true)}
-                  isArchived={project.archived}
-                />
-              ) : (
-                <TaskTable
-                  tasks={filteredTasks}
-                  allTasks={allTasks}
-                  members={activeMembers}
-                  currentUserId={user?.id}
-                  canDeleteAny={canDeleteAny}
-                  isArchived={project.archived}
-                  loading={tasksLoading}
-                  filters={filters}
-                  hasActiveFilters={hasActiveFilters}
-                  onSetFilters={setFilters}
-                  onClearFilters={clearFilters}
-                  onCreateTask={() => setShowCreateTaskDialog(true)}
-                  onEditTask={setEditingTask}
-                  onDeleteTask={deleteTask}
-                  onQuickStatusChange={handleQuickStatusChange}
-                />
-              )}
+              {/* Kanban Board */}
+              <KanbanBoard
+                tasks={allTasks}
+                allTasks={allTasks}
+                members={activeMembers}
+                sprints={allSprints}
+                currentUserId={user?.id}
+                isArchived={project.archived}
+                loading={tasksLoading}
+                onCreateTask={() => setShowCreateTaskDialog(true)}
+                onEditTask={setEditingTask}
+                onUpdateTaskStatus={handleUpdateTaskStatus}
+              />
             </>
           )}
         </div>

@@ -7,6 +7,7 @@ import { format, parseISO } from 'date-fns'
 import { Loader2, Trash2 } from 'lucide-react'
 
 import type { Task, UpdateTaskInput } from '@/types/task'
+import type { Sprint } from '@/types/sprint'
 import type { WorkspaceMember } from '@/types/workspace'
 import {
   updateTaskSchema,
@@ -57,6 +58,7 @@ interface EditTaskDialogProps {
   onOpenChange: (open: boolean) => void
   task: Task | null
   members: WorkspaceMember[]
+  sprints?: Sprint[]
   canDelete: boolean
   onUpdateTask: (
     taskId: string,
@@ -70,6 +72,7 @@ export function EditTaskDialog({
   onOpenChange,
   task,
   members,
+  sprints,
   canDelete,
   onUpdateTask,
   onDeleteTask,
@@ -85,6 +88,7 @@ export function EditTaskDialog({
       title: '',
       description: '',
       assignee_id: '',
+      sprint_id: '',
       status: 'to_do',
       priority: 'medium',
     },
@@ -97,6 +101,7 @@ export function EditTaskDialog({
         title: task.title,
         description: task.description ?? '',
         assignee_id: task.assignee_id ?? '',
+        sprint_id: task.sprint_id ?? '',
         status: task.status,
         priority: task.priority,
       })
@@ -115,6 +120,10 @@ export function EditTaskDialog({
         assignee_id:
           values.assignee_id && values.assignee_id !== 'unassigned'
             ? values.assignee_id
+            : null,
+        sprint_id:
+          values.sprint_id && values.sprint_id !== 'none'
+            ? values.sprint_id
             : null,
         status: values.status,
         priority: values.priority,
@@ -267,6 +276,43 @@ export function EditTaskDialog({
                   </FormItem>
                 )}
               />
+
+              {/* Sprint (only shown when sprints are available) */}
+              {sprints && sprints.length > 0 && (
+                <FormField
+                  control={form.control}
+                  name="sprint_id"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        Sprint{' '}
+                        <span className="font-normal text-muted-foreground">
+                          (optional)
+                        </span>
+                      </FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value ?? ''}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="No sprint" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="none">No sprint</SelectItem>
+                          {sprints.map((sprint) => (
+                            <SelectItem key={sprint.id} value={sprint.id}>
+                              {sprint.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
 
               {/* Status */}
               <FormField
