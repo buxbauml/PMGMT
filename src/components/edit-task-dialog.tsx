@@ -14,6 +14,8 @@ import {
   type UpdateTaskFormValues,
 } from '@/lib/validations/task'
 
+import { FileAttachmentsSection } from '@/components/file-attachments-section'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -65,6 +67,11 @@ interface EditTaskDialogProps {
     input: UpdateTaskInput
   ) => Promise<{ data: unknown; error: string | null }>
   onDeleteTask: (taskId: string) => Promise<{ error: string | null }>
+  // File attachment props
+  workspaceId?: string | null
+  projectId?: string | null
+  currentUserId?: string
+  isAdmin?: boolean
 }
 
 export function EditTaskDialog({
@@ -76,6 +83,10 @@ export function EditTaskDialog({
   canDelete,
   onUpdateTask,
   onDeleteTask,
+  workspaceId,
+  projectId,
+  currentUserId,
+  isAdmin = false,
 }: EditTaskDialogProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -169,7 +180,7 @@ export function EditTaskDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogContent className="sm:max-w-[520px]">
+        <DialogContent className="sm:max-w-[520px] max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Edit task</DialogTitle>
             <DialogDescription>
@@ -177,7 +188,9 @@ export function EditTaskDialog({
             </DialogDescription>
           </DialogHeader>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-0 overflow-hidden">
+              <ScrollArea className="max-h-[60vh] pr-4">
+              <div className="space-y-4 pb-1">
               {serverError && (
                 <div className="rounded-md border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive">
                   {serverError}
@@ -426,7 +439,20 @@ export function EditTaskDialog({
                 )}
               />
 
-              <DialogFooter className="flex items-center justify-between sm:justify-between">
+              {/* File Attachments */}
+              {workspaceId && projectId && task && (
+                <FileAttachmentsSection
+                  workspaceId={workspaceId}
+                  projectId={projectId}
+                  taskId={task.id}
+                  currentUserId={currentUserId}
+                  isAdmin={isAdmin}
+                />
+              )}
+              </div>
+              </ScrollArea>
+
+              <DialogFooter className="mt-4 flex items-center justify-between sm:justify-between">
                 <div>
                   {canDelete && (
                     <Button

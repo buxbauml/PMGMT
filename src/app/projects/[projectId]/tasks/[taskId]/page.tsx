@@ -31,6 +31,7 @@ import { WorkspaceSettings } from '@/components/workspace-settings'
 import { ActivityFeed } from '@/components/activity-feed'
 import { CommentForm } from '@/components/comment-form'
 import { EditCommentDialog } from '@/components/edit-comment-dialog'
+import { FileAttachmentsSection } from '@/components/file-attachments-section'
 
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
@@ -603,6 +604,17 @@ export default function TaskDetailPage({
                     No description
                   </p>
                 )}
+              </div>
+
+              {/* File Attachments */}
+              <div className="mt-6">
+                <FileAttachmentsSection
+                  workspaceId={activeWorkspace?.id ?? null}
+                  projectId={projectId}
+                  taskId={taskId}
+                  currentUserId={user?.id}
+                  isAdmin={isOwner || isAdmin}
+                />
               </div>
 
               <Separator className="my-6" />

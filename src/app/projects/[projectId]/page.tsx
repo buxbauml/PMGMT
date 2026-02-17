@@ -319,6 +319,10 @@ export default function ProjectDetailPage({
           }
           onUpdateTask={updateTask}
           onDeleteTask={deleteTask}
+          workspaceId={activeWorkspace?.id ?? null}
+          projectId={projectId}
+          currentUserId={user?.id}
+          isAdmin={isOwner || isAdmin}
         />
       )}
 

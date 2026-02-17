@@ -468,7 +468,19 @@ export async function DELETE(
     )
   }
 
-  // Delete the task (RLS also enforces this)
+  // Clean up attachment files from Supabase Storage before deleting the task
+  // (ON DELETE CASCADE removes the DB records, but storage files need explicit cleanup)
+  const { data: attachments } = await supabase
+    .from('task_attachments')
+    .select('storage_path')
+    .eq('task_id', taskId)
+
+  if (attachments && attachments.length > 0) {
+    const paths = attachments.map((a) => a.storage_path)
+    await supabase.storage.from('task-attachments').remove(paths)
+  }
+
+  // Delete the task (RLS also enforces this; CASCADE removes attachment records)
   const { error: deleteError } = await supabase
     .from('tasks')
     .delete()

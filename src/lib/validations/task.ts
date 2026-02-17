@@ -65,3 +65,31 @@ export const updateCommentSchema = z.object({
 })
 
 export type UpdateCommentFormValues = z.infer<typeof updateCommentSchema>
+
+// --- Attachment validation (PROJ-8) ---
+
+export const createAttachmentSchema = z.object({
+  original_filename: z
+    .string()
+    .min(1, 'Filename is required')
+    .max(255, 'Filename must be at most 255 characters'),
+  file_size: z
+    .number()
+    .int('File size must be an integer')
+    .positive('File size must be positive')
+    .max(10 * 1024 * 1024, 'File size must not exceed 10 MB'),
+  mime_type: z.enum([
+    'image/jpeg',
+    'image/png',
+    'image/gif',
+    'image/webp',
+    'application/pdf',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'text/plain',
+    'application/zip',
+  ], { message: 'Unsupported file type' }),
+  storage_path: z
+    .string()
+    .min(1, 'Storage path is required')
+    .max(500, 'Storage path is too long'),
+})
