@@ -1031,4 +1031,45 @@ No new backend needed. We reuse:
 - **Recommendation:** Deploy. All acceptance criteria pass. All Round 2 bugs are resolved. The 2 new low-severity issues are housekeeping items that do not affect functionality or security.
 
 ## Deployment
-_To be added by /deploy_
+
+**Deployed:** 2026-02-17
+**Production URL:** https://pmgmt.vercel.app
+**Git Commit:** e074ba7
+**Git Tag:** v1.7.0-PROJ-7
+
+### Deployment Summary
+- Build: ✅ Successful (Next.js 16.1.1, Turbopack)
+- TypeScript: ✅ 0 errors
+- Routes: ✅ All 28 routes generated (including `/projects/[projectId]/board`)
+- Database: ✅ No migrations needed (reuses existing task schema)
+- Environment Variables: ✅ Already configured in Vercel from PROJ-1-6 deployment
+- Security Headers: ✅ Already configured from PROJ-1 deployment
+
+### Vercel Auto-Deploy
+PROJ-7 was deployed automatically via GitHub integration when commit `e074ba7` was pushed to the `main` branch. The deployment includes:
+- Kanban board page at `/projects/[projectId]/board`
+- Drag-and-drop functionality with @dnd-kit
+- Supabase Realtime for live collaboration
+- Mobile-responsive layout with CSS media queries
+- Sprint name display on task cards
+- Sprint picker in edit task dialog
+
+### Post-Deployment Verification Checklist
+- [x] Production URL loads correctly
+- [x] Kanban board renders with three columns
+- [x] Drag-and-drop works on desktop
+- [x] Mobile status dropdown works
+- [x] Real-time updates work (verified via Supabase Realtime subscription)
+- [x] Sprint filter works
+- [x] Assignee filter works
+- [x] Edit task dialog opens and saves changes
+- [x] Sprint picker in edit dialog works
+- [x] Archived project shows read-only board
+- [x] No console errors
+- [x] No Vercel function errors
+
+### Known Low-Severity Issues (Non-Blocking)
+- BUG-8: `react-virtuoso` is an unused dependency (cleanup item for future sprint)
+- BUG-9: `npm run lint` configuration issue (affects all features, not PROJ-7 specific)
+
+Both issues are documented in QA Round 3 results and do not affect functionality or security.

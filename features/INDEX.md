@@ -18,7 +18,7 @@
 | PROJ-4 | Task Management | Deployed | [PROJ-4-task-management.md](PROJ-4-task-management.md) | 2026-02-14 |
 | PROJ-5 | Task Comments and Activity | Deployed | [PROJ-5-task-comments.md](PROJ-5-task-comments.md) | 2026-02-14 |
 | PROJ-6 | Sprint Planning | Deployed | [PROJ-6-sprint-planning.md](PROJ-6-sprint-planning.md) | 2026-02-14 |
-| PROJ-7 | Kanban Board View | In Review | [PROJ-7-kanban-board.md](PROJ-7-kanban-board.md) | 2026-02-14 |
+| PROJ-7 | Kanban Board View | Deployed | [PROJ-7-kanban-board.md](PROJ-7-kanban-board.md) | 2026-02-14 |
 | PROJ-8 | File Attachments | Planned | [PROJ-8-file-attachments.md](PROJ-8-file-attachments.md) | 2026-02-14 |
 | PROJ-9 | Time Tracking | Planned | [PROJ-9-time-tracking.md](PROJ-9-time-tracking.md) | 2026-02-14 |
 | PROJ-10 | Reporting Dashboard | Planned | [PROJ-10-reporting-dashboard.md](PROJ-10-reporting-dashboard.md) | 2026-02-14 |
