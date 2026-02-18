@@ -120,19 +120,25 @@ export function useWorkspace() {
           body: JSON.stringify(input),
         })
 
-        const json = await res.json()
-
         if (!res.ok) {
-          return { data: null, error: json.error ?? 'Failed to create workspace' }
+          let errorMsg = `Server error (${res.status})`
+          try {
+            const json = await res.json()
+            errorMsg = json.error ?? errorMsg
+          } catch {
+            // response wasn't JSON
+          }
+          return { data: null, error: errorMsg }
         }
 
+        const json = await res.json()
         const newWorkspace: Workspace = json.data
         setWorkspaces((prev) => [newWorkspace, ...prev])
         setActiveWorkspaceId(newWorkspace.id)
 
         return { data: newWorkspace, error: null }
-      } catch {
-        return { data: null, error: 'Failed to create workspace' }
+      } catch (err) {
+        return { data: null, error: `Network error: ${err instanceof Error ? err.message : 'Unknown'}` }
       }
     },
     []
