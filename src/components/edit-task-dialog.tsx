@@ -102,6 +102,7 @@ export function EditTaskDialog({
       sprint_id: '',
       status: 'to_do',
       priority: 'medium',
+      estimated_hours: null,
     },
   })
 
@@ -115,6 +116,7 @@ export function EditTaskDialog({
         sprint_id: task.sprint_id ?? '',
         status: task.status,
         priority: task.priority,
+        estimated_hours: task.estimated_hours ?? null,
       })
     }
   }, [task, form])
@@ -138,6 +140,10 @@ export function EditTaskDialog({
             : null,
         status: values.status,
         priority: values.priority,
+        estimated_hours:
+          values.estimated_hours !== null && values.estimated_hours !== undefined
+            ? values.estimated_hours
+            : null,
       }
 
       const result = await onUpdateTask(task.id, input)
@@ -326,6 +332,43 @@ export function EditTaskDialog({
                   )}
                 />
               )}
+
+              {/* Estimated Hours */}
+              <FormField
+                control={form.control}
+                name="estimated_hours"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      Estimated Hours{' '}
+                      <span className="font-normal text-muted-foreground">
+                        (optional, e.g. 1.5 = 1h 30m)
+                      </span>
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        step="0.5"
+                        min="0.5"
+                        max="999"
+                        placeholder="e.g. 4"
+                        {...field}
+                        value={field.value ?? ''}
+                        onChange={(e) => {
+                          const val = e.target.value
+                          if (val === '') {
+                            field.onChange(null)
+                          } else {
+                            const num = parseFloat(val)
+                            field.onChange(isNaN(num) ? null : num)
+                          }
+                        }}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               {/* Status */}
               <FormField

@@ -32,6 +32,7 @@ import { ActivityFeed } from '@/components/activity-feed'
 import { CommentForm } from '@/components/comment-form'
 import { EditCommentDialog } from '@/components/edit-comment-dialog'
 import { FileAttachmentsSection } from '@/components/file-attachments-section'
+import { TimeTrackingSection } from '@/components/time-tracking-section'
 
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
@@ -604,6 +605,16 @@ export default function TaskDetailPage({
                     No description
                   </p>
                 )}
+              </div>
+
+              {/* Time Tracking */}
+              <div className="mt-6">
+                <TimeTrackingSection
+                  workspaceId={activeWorkspace?.id ?? null}
+                  projectId={projectId}
+                  taskId={taskId}
+                  estimatedHours={task.estimated_hours}
+                />
               </div>
 
               {/* File Attachments */}

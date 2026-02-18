@@ -16,6 +16,7 @@ export const createTaskSchema = z.object({
   sprint_id: z.string().uuid().optional().or(z.literal('')).or(z.null()),
   status: z.enum(['to_do', 'in_progress', 'done']),
   priority: z.enum(['low', 'medium', 'high']),
+  estimated_hours: z.number().positive().max(999).nullable().optional(),
 })
 
 export type CreateTaskFormValues = z.infer<typeof createTaskSchema>
@@ -38,6 +39,7 @@ export const updateTaskSchema = z.object({
   sprint_id: z.string().uuid().optional().or(z.literal('')).or(z.null()),
   status: z.enum(['to_do', 'in_progress', 'done']).optional(),
   priority: z.enum(['low', 'medium', 'high']).optional(),
+  estimated_hours: z.number().positive().max(999).nullable().optional(),
 })
 
 export type UpdateTaskFormValues = z.infer<typeof updateTaskSchema>
@@ -93,3 +95,38 @@ export const createAttachmentSchema = z.object({
     .min(1, 'Storage path is required')
     .max(500, 'Storage path is too long'),
 })
+
+// --- Time Log validation (PROJ-9) ---
+
+export const createTimeLogSchema = z.object({
+  duration: z
+    .number({ message: 'Duration must be a positive number' })
+    .positive('Duration must be a positive number')
+    .max(24, 'Duration cannot exceed 24 hours per entry'),
+  description: z
+    .string()
+    .max(500, 'Description must be at most 500 characters')
+    .trim()
+    .optional()
+    .or(z.literal('')),
+  logged_date: z.string().min(1, 'Date is required'),
+})
+
+export type CreateTimeLogFormValues = z.infer<typeof createTimeLogSchema>
+
+export const updateTimeLogSchema = z.object({
+  duration: z
+    .number({ message: 'Duration must be a positive number' })
+    .positive('Duration must be a positive number')
+    .max(24, 'Duration cannot exceed 24 hours per entry')
+    .optional(),
+  description: z
+    .string()
+    .max(500, 'Description must be at most 500 characters')
+    .trim()
+    .optional()
+    .or(z.literal('')),
+  logged_date: z.string().optional(),
+})
+
+export type UpdateTimeLogFormValues = z.infer<typeof updateTimeLogSchema>

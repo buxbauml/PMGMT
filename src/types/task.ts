@@ -10,6 +10,7 @@ export interface Task {
   assignee_id: string | null
   status: TaskStatus
   priority: TaskPriority
+  estimated_hours: number | null
   completed_at: string | null
   completed_by: string | null
   created_by: string
@@ -30,6 +31,7 @@ export interface CreateTaskInput {
   sprint_id?: string | null
   status?: TaskStatus
   priority?: TaskPriority
+  estimated_hours?: number | null
 }
 
 export interface UpdateTaskInput {
@@ -39,6 +41,7 @@ export interface UpdateTaskInput {
   sprint_id?: string | null
   status?: TaskStatus
   priority?: TaskPriority
+  estimated_hours?: number | null
 }
 
 export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
@@ -138,3 +141,36 @@ export const ALLOWED_FILE_EXTENSIONS = 'JPG, PNG, GIF, WEBP, PDF, DOCX, TXT, ZIP
 
 /** Maximum file size in bytes (10 MB) */
 export const MAX_FILE_SIZE = 10 * 1024 * 1024
+
+// --- Time Tracking (PROJ-9) ---
+
+export interface TimeLog {
+  id: string
+  task_id: string
+  workspace_id: string
+  user_id: string
+  duration: number
+  description: string | null
+  logged_date: string
+  created_at: string
+  updated_at: string
+  // Joined data
+  user_name: string | null
+  user_email: string | null
+  user_avatar_url: string | null
+  // Computed
+  is_owner: boolean
+}
+
+/**
+ * Format decimal hours to a human-readable string.
+ * e.g. 1.5 → "1h 30m", 0.25 → "15m", 2 → "2h"
+ */
+export function formatDuration(hours: number): string {
+  if (hours <= 0) return '0m'
+  const h = Math.floor(hours)
+  const m = Math.round((hours - h) * 60)
+  if (h === 0) return `${m}m`
+  if (m === 0) return `${h}h`
+  return `${h}h ${m}m`
+}

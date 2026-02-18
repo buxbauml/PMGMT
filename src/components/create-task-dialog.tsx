@@ -67,6 +67,7 @@ export function CreateTaskDialog({
       assignee_id: '',
       status: 'to_do',
       priority: 'medium',
+      estimated_hours: null,
     },
   })
 
@@ -83,6 +84,8 @@ export function CreateTaskDialog({
       if (values.description) input.description = values.description
       if (values.assignee_id && values.assignee_id !== '' && values.assignee_id !== 'unassigned')
         input.assignee_id = values.assignee_id
+      if (values.estimated_hours !== null && values.estimated_hours !== undefined)
+        input.estimated_hours = values.estimated_hours
 
       const result = await onCreateTask(input)
       if (!result.error) {
@@ -196,6 +199,43 @@ export function CreateTaskDialog({
                       ))}
                     </SelectContent>
                   </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Estimated Hours */}
+            <FormField
+              control={form.control}
+              name="estimated_hours"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    Estimated Hours{' '}
+                    <span className="font-normal text-muted-foreground">
+                      (optional, e.g. 1.5 = 1h 30m)
+                    </span>
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      step="0.5"
+                      min="0.5"
+                      max="999"
+                      placeholder="e.g. 4"
+                      {...field}
+                      value={field.value ?? ''}
+                      onChange={(e) => {
+                        const val = e.target.value
+                        if (val === '') {
+                          field.onChange(null)
+                        } else {
+                          const num = parseFloat(val)
+                          field.onChange(isNaN(num) ? null : num)
+                        }
+                      }}
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}

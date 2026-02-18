@@ -176,7 +176,7 @@ export async function POST(
     )
   }
 
-  const { title, description, assignee_id, sprint_id, status, priority } = parsed.data
+  const { title, description, assignee_id, sprint_id, status, priority, estimated_hours } = parsed.data
 
   // If assignee_id is provided, verify they are a workspace member
   const cleanAssigneeId = assignee_id && assignee_id !== '' ? assignee_id : null
@@ -224,6 +224,7 @@ export async function POST(
     status,
     priority,
     created_by: user.id,
+    estimated_hours: estimated_hours ?? null,
   }
 
   // If task is created as "done", record completion info

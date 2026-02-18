@@ -193,7 +193,7 @@ export async function PATCH(
     )
   }
 
-  const { title, description, assignee_id, sprint_id, status, priority } = parsed.data
+  const { title, description, assignee_id, sprint_id, status, priority, estimated_hours } = parsed.data
 
   // If assignee_id is provided, verify they are a workspace member
   const cleanAssigneeId = assignee_id === '' ? null : assignee_id
@@ -240,6 +240,7 @@ export async function PATCH(
   if (cleanSprintId !== undefined) updateData.sprint_id = cleanSprintId
   if (status !== undefined) updateData.status = status
   if (priority !== undefined) updateData.priority = priority
+  if (estimated_hours !== undefined) updateData.estimated_hours = estimated_hours
 
   // Handle completion tracking
   if (status !== undefined) {

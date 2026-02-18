@@ -1,6 +1,7 @@
 'use client'
 
-import { Settings, LogOut } from 'lucide-react'
+import Link from 'next/link'
+import { Settings, LogOut, Clock } from 'lucide-react'
 import type { Workspace } from '@/types/workspace'
 
 import { Button } from '@/components/ui/button'
@@ -46,6 +47,23 @@ export function AppHeader({
       </div>
       <div className="flex items-center gap-1">
         <TooltipProvider delayDuration={300}>
+          {activeWorkspace && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                  asChild
+                >
+                  <Link href="/time" aria-label="Time tracking">
+                    <Clock className="h-4 w-4" />
+                  </Link>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Time tracking</TooltipContent>
+            </Tooltip>
+          )}
           {activeWorkspace && (
             <Tooltip>
               <TooltipTrigger asChild>
