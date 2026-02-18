@@ -1,6 +1,6 @@
 # PROJ-9: Time Tracking
 
-## Status: In Review
+## Status: Deployed
 **Created:** 2026-02-14
 **Last Updated:** 2026-02-18
 
@@ -424,4 +424,7 @@ No new npm packages required. All UI components are available in the existing sh
 - **Recommendation:** Deploy to production. The 2 notes (date validation, query limit) are non-blocking improvements that can be addressed in a future maintenance pass.
 
 ## Deployment
-_To be added by /deploy_
+- **Production URL:** https://pmgmt.vercel.app
+- **Deployed:** 2026-02-18
+- **Commit:** `7fbad43` on `main`
+- **Database Migration:** `20260218_001_time_tracking.sql` applied
