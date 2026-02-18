@@ -42,6 +42,7 @@ export function CreateWorkspaceDialog({
   onCreateWorkspace,
 }: CreateWorkspaceDialogProps) {
   const [isLoading, setIsLoading] = useState(false)
+  const [serverError, setServerError] = useState<string | null>(null)
 
   const form = useForm<CreateWorkspaceFormValues>({
     resolver: zodResolver(createWorkspaceSchema),
@@ -53,11 +54,14 @@ export function CreateWorkspaceDialog({
 
   async function onSubmit(values: CreateWorkspaceFormValues) {
     setIsLoading(true)
+    setServerError(null)
     try {
       const result = await onCreateWorkspace(values)
       if (!result.error) {
         form.reset()
         onOpenChange(false)
+      } else {
+        setServerError(result.error)
       }
     } finally {
       setIsLoading(false)
@@ -65,7 +69,13 @@ export function CreateWorkspaceDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(nextOpen) => {
+      if (!nextOpen) {
+        setServerError(null)
+        form.reset()
+      }
+      onOpenChange(nextOpen)
+    }}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Create workspace</DialogTitle>
@@ -75,6 +85,11 @@ export function CreateWorkspaceDialog({
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            {serverError && (
+              <div className="rounded-md border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                {serverError}
+              </div>
+            )}
             <FormField
               control={form.control}
               name="name"
