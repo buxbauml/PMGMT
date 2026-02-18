@@ -92,49 +92,35 @@ export async function POST(request: NextRequest) {
 
   const { name, description } = parsed.data
 
-  // Create workspace
-  const { data: workspace, error: createError } = await supabase
-    .from('workspaces')
-    .insert({
-      name,
-      description: description || null,
-      owner_id: user.id,
+  // Create workspace, add owner as member, and set as last active — all atomically
+  const { data: workspaceId, error: rpcError } = await supabase
+    .rpc('create_workspace_with_owner', {
+      p_name: name,
+      p_description: description || null,
+      p_owner_id: user.id,
     })
-    .select()
+
+  if (rpcError) {
+    console.error('Workspace creation failed:', rpcError)
+    return NextResponse.json(
+      { error: `Failed to create workspace: ${rpcError.message}` },
+      { status: 500 }
+    )
+  }
+
+  // Fetch the created workspace to return full data
+  const { data: workspace, error: fetchError } = await supabase
+    .from('workspaces')
+    .select('*')
+    .eq('id', workspaceId)
     .single()
 
-  if (createError) {
-    console.error('Workspace creation failed:', createError)
+  if (fetchError || !workspace) {
     return NextResponse.json(
-      { error: `Failed to create workspace: ${createError.message}` },
+      { error: 'Workspace created but failed to fetch details' },
       { status: 500 }
     )
   }
-
-  // Add creator as owner member
-  const { error: memberError } = await supabase
-    .from('workspace_members')
-    .insert({
-      workspace_id: workspace.id,
-      user_id: user.id,
-      role: 'owner',
-    })
-
-  if (memberError) {
-    console.error('Workspace membership creation failed:', memberError)
-    // Rollback workspace creation
-    await supabase.from('workspaces').delete().eq('id', workspace.id)
-    return NextResponse.json(
-      { error: `Failed to create workspace membership: ${memberError.message}` },
-      { status: 500 }
-    )
-  }
-
-  // Set as last active workspace
-  await supabase
-    .from('profiles')
-    .update({ last_active_workspace_id: workspace.id })
-    .eq('id', user.id)
 
   return NextResponse.json({ data: workspace }, { status: 201 })
 }
