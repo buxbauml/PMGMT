@@ -51,7 +51,122 @@
 <!-- Sections below are added by subsequent skills -->
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+### Overview
+The Reporting Dashboard is a read-only analytics page that aggregates existing data (tasks, time logs, sprints, projects) into charts and summary metrics. **No new database tables are needed** — all data is computed by querying the existing tables server-side. The frontend uses Recharts (a lightweight React chart library) to render bar charts, pie charts, and line charts.
+
+---
+
+### Component Structure
+
+```
+/reports page (new)
++-- Reports Header
+|   +-- Title + Workspace name
+|   +-- Project Filter Dropdown (all projects or specific one)
++-- Stats Overview Row (4 metric cards)
+|   +-- Total Tasks card
+|   +-- Completion Rate card (% + mini progress bar)
+|   +-- Avg Velocity card (tasks/sprint average)
+|   +-- Total Hours Logged card (if time tracking data exists)
++-- Charts Row
+|   +-- Tasks by Status (Pie/Donut Chart)
+|   +-- Tasks by Assignee (Bar Chart - top assignees)
++-- Completion Trend (Line Chart — tasks completed per week, last 8 weeks)
++-- Sprint Burndown Section (shown only if active sprint exists)
+|   +-- Burndown Chart (Line Chart: ideal vs actual remaining tasks per day)
++-- Export Button (admin/owner only → downloads CSV)
+```
+
+---
+
+### Data Model (No New Tables)
+
+All data is computed from existing tables:
+
+```
+Key Stats come from:
+- tasks table → count total, count by status
+- tasks.completed_at → completed count
+- sprints + tasks → velocity calculation
+- time_logs → total hours if PROJ-9 is active
+
+Tasks by Assignee comes from:
+- tasks.assignee_id grouped by user → count per person
+- Joined with profiles table for names
+
+Completion Trend (last 8 weeks) comes from:
+- tasks.completed_at → group completed tasks by week
+
+Sprint Burndown comes from:
+- sprints.start_date, sprints.end_date → date range
+- activity_logs (completed events) → which tasks were done on which day
+- This gives: tasks remaining per day = total sprint tasks minus cumulative completions
+
+CSV Export contains:
+- All the above data in flat table format
+```
+
+---
+
+### New API Endpoints
+
+**`GET /api/workspaces/[id]/reports?projectId=&period=`**
+
+Returns all aggregated data in a single call:
+- Total/completed/in-progress/to-do task counts
+- Per-assignee task counts (for bar chart)
+- Per-week completion counts for the last 8 weeks (for trend line)
+- Sprint velocity (last 5 completed sprints)
+- Active sprint burndown data (if applicable)
+- Total hours logged (from time_logs)
+
+**`GET /api/workspaces/[id]/reports/export?projectId=`**
+
+Admin-only endpoint that streams a CSV file with workspace metrics. No database changes needed — same data as above, formatted as CSV.
+
+---
+
+### Tech Decisions
+
+| Decision | Choice | Why |
+|----------|--------|-----|
+| Charts | Recharts library | Specified in requirements; lightweight (~60KB), React-native, no Canvas config needed |
+| Data fetching | Single `/reports` API | One round-trip; server aggregates efficiently; client just renders |
+| Burndown calculation | Uses existing `activity_logs` table | Completions are already recorded when tasks are marked done — no new tracking infra |
+| Filtering | Project filter only (v1) | Date range adds significant complexity; project filter covers 80% of use cases |
+| Export | Browser-streamed CSV | No server storage needed; simple and secure |
+| Permissions | Backend checks for team data | API returns empty arrays for non-admin member data; never trust frontend-only hiding |
+
+---
+
+### New Files Needed
+
+| File | Purpose |
+|------|---------|
+| `src/app/reports/page.tsx` | Main reports page with filter + all sections |
+| `src/components/report-stat-card.tsx` | Metric card (number + label) — reusable |
+| `src/components/report-status-chart.tsx` | Pie chart of tasks by status |
+| `src/components/report-assignee-chart.tsx` | Bar chart of tasks per assignee |
+| `src/components/report-trend-chart.tsx` | Line chart of weekly completions |
+| `src/components/report-burndown-chart.tsx` | Sprint burndown line chart |
+| `src/app/api/workspaces/[id]/reports/route.ts` | Aggregation API (GET) |
+| `src/app/api/workspaces/[id]/reports/export/route.ts` | CSV export API (GET, admin only) |
+
+---
+
+### Dependencies
+
+**New package to install:**
+- `recharts` — React charting library (bar, pie, line charts)
+
+**Existing UI components reused:**
+- `src/components/ui/card.tsx` — stat cards
+- `src/components/ui/tabs.tsx` — optional tab layout
+- `src/components/ui/select.tsx` — project filter dropdown
+- `src/components/ui/badge.tsx` — status labels
+- `src/components/ui/progress.tsx` — completion % bars
+- `src/components/ui/button.tsx` — export button
 
 ## QA Test Results
 _To be added by /qa_
