@@ -104,8 +104,9 @@ export async function POST(request: NextRequest) {
     .single()
 
   if (createError) {
+    console.error('Workspace creation failed:', createError)
     return NextResponse.json(
-      { error: 'Failed to create workspace' },
+      { error: `Failed to create workspace: ${createError.message}` },
       { status: 500 }
     )
   }
@@ -120,10 +121,11 @@ export async function POST(request: NextRequest) {
     })
 
   if (memberError) {
+    console.error('Workspace membership creation failed:', memberError)
     // Rollback workspace creation
     await supabase.from('workspaces').delete().eq('id', workspace.id)
     return NextResponse.json(
-      { error: 'Failed to create workspace membership' },
+      { error: `Failed to create workspace membership: ${memberError.message}` },
       { status: 500 }
     )
   }
