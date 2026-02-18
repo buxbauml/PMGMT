@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase-server'
+import { createClient, createAdminClient } from '@/lib/supabase-server'
 import { createTimeLogSchema } from '@/lib/validations/task'
 import { checkRateLimit, recordRateLimitAttempt } from '@/lib/rate-limit'
 
@@ -26,6 +26,8 @@ export async function GET(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const admin = createAdminClient()
+
   const rateLimit = checkRateLimit(user.id, {
     prefix: 'read-time-logs',
     maxAttempts: 120,
@@ -39,7 +41,7 @@ export async function GET(
     )
   }
 
-  const { data: membership } = await supabase
+  const { data: membership } = await admin
     .from('workspace_members')
     .select('role')
     .eq('workspace_id', workspaceId)
@@ -53,7 +55,7 @@ export async function GET(
     )
   }
 
-  const { data: project } = await supabase
+  const { data: project } = await admin
     .from('projects')
     .select('id')
     .eq('id', projectId)
@@ -64,7 +66,7 @@ export async function GET(
     return NextResponse.json({ error: 'Project not found' }, { status: 404 })
   }
 
-  const { data: task } = await supabase
+  const { data: task } = await admin
     .from('tasks')
     .select('id, estimated_hours')
     .eq('id', taskId)
@@ -75,7 +77,7 @@ export async function GET(
     return NextResponse.json({ error: 'Task not found' }, { status: 404 })
   }
 
-  const { data: timeLogs, error: fetchError } = await supabase
+  const { data: timeLogs, error: fetchError } = await admin
     .from('time_logs')
     .select(`
       *,
@@ -140,7 +142,9 @@ export async function POST(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const { data: membership } = await supabase
+  const admin = createAdminClient()
+
+  const { data: membership } = await admin
     .from('workspace_members')
     .select('role')
     .eq('workspace_id', workspaceId)
@@ -154,7 +158,7 @@ export async function POST(
     )
   }
 
-  const { data: project } = await supabase
+  const { data: project } = await admin
     .from('projects')
     .select('id, archived')
     .eq('id', projectId)
@@ -172,7 +176,7 @@ export async function POST(
     )
   }
 
-  const { data: task } = await supabase
+  const { data: task } = await admin
     .from('tasks')
     .select('id')
     .eq('id', taskId)
@@ -213,7 +217,7 @@ export async function POST(
 
   const { duration, description, logged_date } = parsed.data
 
-  const { data: newLog, error: insertError } = await supabase
+  const { data: newLog, error: insertError } = await admin
     .from('time_logs')
     .insert({
       task_id: taskId,

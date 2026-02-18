@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase-server'
+import { createClient, createAdminClient } from '@/lib/supabase-server'
 import { createAttachmentSchema } from '@/lib/validations/task'
 import { checkRateLimit, recordRateLimitAttempt } from '@/lib/rate-limit'
 
@@ -27,8 +27,10 @@ export async function GET(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const admin = createAdminClient()
+
   // Verify user is a member of this workspace
-  const { data: membership } = await supabase
+  const { data: membership } = await admin
     .from('workspace_members')
     .select('role')
     .eq('workspace_id', workspaceId)
@@ -43,7 +45,7 @@ export async function GET(
   }
 
   // Verify project belongs to workspace
-  const { data: project } = await supabase
+  const { data: project } = await admin
     .from('projects')
     .select('id')
     .eq('id', projectId)
@@ -58,7 +60,7 @@ export async function GET(
   }
 
   // Verify task belongs to project
-  const { data: task } = await supabase
+  const { data: task } = await admin
     .from('tasks')
     .select('id')
     .eq('id', taskId)
@@ -73,7 +75,7 @@ export async function GET(
   }
 
   // Fetch attachments with uploader info
-  const { data: attachments, error: fetchError } = await supabase
+  const { data: attachments, error: fetchError } = await admin
     .from('task_attachments')
     .select(`
       *,
@@ -98,7 +100,7 @@ export async function GET(
   const thumbnailUrls: Record<string, string> = {}
   if (imageAttachments.length > 0) {
     const paths = imageAttachments.map((a) => a.storage_path)
-    const { data: signedUrls } = await supabase.storage
+    const { data: signedUrls } = await admin.storage
       .from('task-attachments')
       .createSignedUrls(paths, 3600) // 1 hour
 
@@ -154,8 +156,10 @@ export async function POST(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const admin = createAdminClient()
+
   // Verify user is a member of this workspace
-  const { data: membership } = await supabase
+  const { data: membership } = await admin
     .from('workspace_members')
     .select('role')
     .eq('workspace_id', workspaceId)
@@ -170,7 +174,7 @@ export async function POST(
   }
 
   // Verify project belongs to workspace and is not archived
-  const { data: project } = await supabase
+  const { data: project } = await admin
     .from('projects')
     .select('id, archived')
     .eq('id', projectId)
@@ -192,7 +196,7 @@ export async function POST(
   }
 
   // Verify task belongs to project
-  const { data: task } = await supabase
+  const { data: task } = await admin
     .from('tasks')
     .select('id')
     .eq('id', taskId)
@@ -250,7 +254,7 @@ export async function POST(
   }
 
   // Verify file exists in storage
-  const { data: fileData, error: fileError } = await supabase.storage
+  const { data: fileData, error: fileError } = await admin.storage
     .from('task-attachments')
     .createSignedUrl(storage_path, 60)
 
@@ -262,7 +266,7 @@ export async function POST(
   }
 
   // Insert attachment record
-  const { data: newAttachment, error: insertError } = await supabase
+  const { data: newAttachment, error: insertError } = await admin
     .from('task_attachments')
     .insert({
       task_id: taskId,
@@ -303,7 +307,7 @@ export async function POST(
   // Generate thumbnail URL if this is an image
   let thumbnailUrl: string | null = null
   if (mime_type.startsWith('image/')) {
-    const { data: signedData } = await supabase.storage
+    const { data: signedData } = await admin.storage
       .from('task-attachments')
       .createSignedUrl(storage_path, 3600)
     if (signedData?.signedUrl) {

@@ -437,7 +437,7 @@ No new bugs found. All previously reported bugs have been resolved.
 - **Recommendation:** Deploy immediately. All acceptance criteria pass, all bugs from previous rounds are resolved, the security audit found no remaining issues, and the build compiles cleanly.
 
 ## Deployment
-- **Production URL:** https://pmgmt.vercel.app
+- **Production URL:** https://pmgmt-eight.vercel.app
 - **Deployed:** 2026-02-17
 - **Commit:** `dcde8d4` on `main`
 - **Database Migration:** `20260217_002_file_attachments.sql` applied

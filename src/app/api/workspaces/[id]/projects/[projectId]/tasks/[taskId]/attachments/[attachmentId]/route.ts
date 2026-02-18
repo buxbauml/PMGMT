@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase-server'
+import { createClient, createAdminClient } from '@/lib/supabase-server'
 import { checkRateLimit, recordRateLimitAttempt } from '@/lib/rate-limit'
 
 type AttachmentIdParams = Promise<{
@@ -27,8 +27,10 @@ export async function DELETE(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const admin = createAdminClient()
+
   // Verify user is a member of this workspace and get role
-  const { data: membership } = await supabase
+  const { data: membership } = await admin
     .from('workspace_members')
     .select('role')
     .eq('workspace_id', workspaceId)
@@ -43,7 +45,7 @@ export async function DELETE(
   }
 
   // Verify project belongs to workspace
-  const { data: project } = await supabase
+  const { data: project } = await admin
     .from('projects')
     .select('id')
     .eq('id', projectId)
@@ -58,7 +60,7 @@ export async function DELETE(
   }
 
   // Verify task belongs to project
-  const { data: task } = await supabase
+  const { data: task } = await admin
     .from('tasks')
     .select('id')
     .eq('id', taskId)
@@ -89,7 +91,7 @@ export async function DELETE(
   }
 
   // Fetch the attachment
-  const { data: attachment } = await supabase
+  const { data: attachment } = await admin
     .from('task_attachments')
     .select('*')
     .eq('id', attachmentId)
@@ -115,7 +117,7 @@ export async function DELETE(
   }
 
   // Delete from Supabase Storage first
-  const { error: storageError } = await supabase.storage
+  const { error: storageError } = await admin.storage
     .from('task-attachments')
     .remove([attachment.storage_path])
 
@@ -127,7 +129,7 @@ export async function DELETE(
   }
 
   // Delete the database record
-  const { error: deleteError } = await supabase
+  const { error: deleteError } = await admin
     .from('task_attachments')
     .delete()
     .eq('id', attachmentId)

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase-server'
+import { createClient, createAdminClient } from '@/lib/supabase-server'
 import { inviteMembersSchema } from '@/lib/validations/workspace'
 import { checkRateLimit, recordRateLimitAttempt } from '@/lib/rate-limit'
 import { sendInvitationEmail } from '@/lib/email'
@@ -21,8 +21,10 @@ export async function GET(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const admin = createAdminClient()
+
   // RLS ensures only owner/admin can see invitations
-  const { data: invitations, error } = await supabase
+  const { data: invitations, error } = await admin
     .from('workspace_invitations')
     .select('*')
     .eq('workspace_id', id)
@@ -57,6 +59,8 @@ export async function POST(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const admin = createAdminClient()
+
   // Rate limiting: max 5 invites per hour
   const hourlyLimit = checkRateLimit(user.id, {
     prefix: 'invite-hourly',
@@ -90,7 +94,7 @@ export async function POST(
   }
 
   // Verify requester is owner or admin
-  const { data: requesterMembership } = await supabase
+  const { data: requesterMembership } = await admin
     .from('workspace_members')
     .select('role')
     .eq('workspace_id', id)
@@ -132,7 +136,7 @@ export async function POST(
   // For now, we still create the invitation and let the accept flow handle duplicates
 
   // Check for existing pending invitations with the same email
-  const { data: existingInvitations } = await supabase
+  const { data: existingInvitations } = await admin
     .from('workspace_invitations')
     .select('invited_email')
     .eq('workspace_id', id)
@@ -160,7 +164,7 @@ export async function POST(
     role,
   }))
 
-  const { data: invitations, error: insertError } = await supabase
+  const { data: invitations, error: insertError } = await admin
     .from('workspace_invitations')
     .insert(invitationRows)
     .select()
@@ -189,13 +193,13 @@ export async function POST(
 
   // Send invitation emails in the background (don't block the response)
   // Fetch workspace name and inviter name for the email
-  const { data: workspace } = await supabase
+  const { data: workspace } = await admin
     .from('workspaces')
     .select('name')
     .eq('id', id)
     .single()
 
-  const { data: inviterProfile } = await supabase
+  const { data: inviterProfile } = await admin
     .from('profiles')
     .select('full_name')
     .eq('id', user.id)

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase-server'
+import { createClient, createAdminClient } from '@/lib/supabase-server'
 import { createSprintSchema } from '@/lib/validations/sprint'
 import { computeSprintStatus } from '@/types/sprint'
 import { checkRateLimit, recordRateLimitAttempt } from '@/lib/rate-limit'
@@ -21,8 +21,10 @@ export async function GET(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const admin = createAdminClient()
+
   // Verify user is a member of this workspace
-  const { data: membership } = await supabase
+  const { data: membership } = await admin
     .from('workspace_members')
     .select('role')
     .eq('workspace_id', workspaceId)
@@ -37,7 +39,7 @@ export async function GET(
   }
 
   // Verify project exists and belongs to this workspace
-  const { data: project } = await supabase
+  const { data: project } = await admin
     .from('projects')
     .select('id')
     .eq('id', projectId)
@@ -52,7 +54,7 @@ export async function GET(
   }
 
   // Fetch sprints with creator and completer profile data
-  const { data: sprints, error: sprintsError } = await supabase
+  const { data: sprints, error: sprintsError } = await admin
     .from('sprints')
     .select(`
       *,
@@ -71,7 +73,7 @@ export async function GET(
   }
 
   // Fetch task counts grouped by sprint
-  const { data: tasks } = await supabase
+  const { data: tasks } = await admin
     .from('tasks')
     .select('id, sprint_id, status')
     .eq('project_id', projectId)
@@ -149,8 +151,10 @@ export async function POST(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const admin = createAdminClient()
+
   // Verify user is an admin or owner of this workspace
-  const { data: membership } = await supabase
+  const { data: membership } = await admin
     .from('workspace_members')
     .select('role')
     .eq('workspace_id', workspaceId)
@@ -172,7 +176,7 @@ export async function POST(
   }
 
   // Verify project exists and belongs to this workspace
-  const { data: project } = await supabase
+  const { data: project } = await admin
     .from('projects')
     .select('id, archived')
     .eq('id', projectId)
@@ -228,7 +232,7 @@ export async function POST(
   const { name, start_date, end_date } = parsed.data
 
   // Check for overlapping sprints in this project
-  const { data: overlapping } = await supabase
+  const { data: overlapping } = await admin
     .from('sprints')
     .select('id, name, start_date, end_date')
     .eq('project_id', projectId)
@@ -242,7 +246,7 @@ export async function POST(
       : null
 
   // Create the sprint
-  const { data: sprint, error: createError } = await supabase
+  const { data: sprint, error: createError } = await admin
     .from('sprints')
     .insert({
       workspace_id: workspaceId,
@@ -266,7 +270,7 @@ export async function POST(
   recordRateLimitAttempt(user.id, 'create-sprint')
 
   // Fetch with profile joins
-  const { data: enrichedSprint } = await supabase
+  const { data: enrichedSprint } = await admin
     .from('sprints')
     .select(`
       *,

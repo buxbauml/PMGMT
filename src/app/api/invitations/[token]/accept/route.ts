@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase-server'
+import { createClient, createAdminClient } from '@/lib/supabase-server'
 
 // POST /api/invitations/[token]/accept - Accept an invitation
 export async function POST(
@@ -18,8 +18,10 @@ export async function POST(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const admin = createAdminClient()
+
   // Fetch the invitation
-  const { data: invitation, error: invError } = await supabase
+  const { data: invitation, error: invError } = await admin
     .from('workspace_invitations')
     .select('*')
     .eq('token', token)
@@ -68,7 +70,7 @@ export async function POST(
   }
 
   // Check if user is already a member
-  const { data: existingMember } = await supabase
+  const { data: existingMember } = await admin
     .from('workspace_members')
     .select('id')
     .eq('workspace_id', invitation.workspace_id)
@@ -89,7 +91,7 @@ export async function POST(
   }
 
   // Add user as a member with the invited role
-  const { error: memberError } = await supabase
+  const { error: memberError } = await admin
     .from('workspace_members')
     .insert({
       workspace_id: invitation.workspace_id,
@@ -105,13 +107,13 @@ export async function POST(
   }
 
   // Mark invitation as accepted
-  await supabase
+  await admin
     .from('workspace_invitations')
     .update({ status: 'accepted' })
     .eq('id', invitation.id)
 
   // Set as last active workspace
-  await supabase
+  await admin
     .from('profiles')
     .update({ last_active_workspace_id: invitation.workspace_id })
     .eq('id', user.id)

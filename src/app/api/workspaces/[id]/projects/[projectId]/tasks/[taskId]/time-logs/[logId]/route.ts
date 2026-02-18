@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase-server'
+import { createClient, createAdminClient } from '@/lib/supabase-server'
 import { updateTimeLogSchema } from '@/lib/validations/task'
 import { checkRateLimit, recordRateLimitAttempt } from '@/lib/rate-limit'
 
@@ -27,7 +27,9 @@ export async function PATCH(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const { data: membership } = await supabase
+  const admin = createAdminClient()
+
+  const { data: membership } = await admin
     .from('workspace_members')
     .select('role')
     .eq('workspace_id', workspaceId)
@@ -41,7 +43,7 @@ export async function PATCH(
     )
   }
 
-  const { data: project } = await supabase
+  const { data: project } = await admin
     .from('projects')
     .select('id')
     .eq('id', projectId)
@@ -52,7 +54,7 @@ export async function PATCH(
     return NextResponse.json({ error: 'Project not found' }, { status: 404 })
   }
 
-  const { data: task } = await supabase
+  const { data: task } = await admin
     .from('tasks')
     .select('id')
     .eq('id', taskId)
@@ -63,7 +65,7 @@ export async function PATCH(
     return NextResponse.json({ error: 'Task not found' }, { status: 404 })
   }
 
-  const { data: timeLog } = await supabase
+  const { data: timeLog } = await admin
     .from('time_logs')
     .select('*')
     .eq('id', logId)
@@ -118,7 +120,7 @@ export async function PATCH(
     return NextResponse.json({ error: 'No fields to update' }, { status: 400 })
   }
 
-  const { error: updateError } = await supabase
+  const { error: updateError } = await admin
     .from('time_logs')
     .update(updateData)
     .eq('id', logId)
@@ -130,7 +132,7 @@ export async function PATCH(
 
   recordRateLimitAttempt(user.id, 'edit-time-log')
 
-  const { data: updatedLog } = await supabase
+  const { data: updatedLog } = await admin
     .from('time_logs')
     .select(`
       *,
@@ -181,7 +183,9 @@ export async function DELETE(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const { data: membership } = await supabase
+  const admin = createAdminClient()
+
+  const { data: membership } = await admin
     .from('workspace_members')
     .select('role')
     .eq('workspace_id', workspaceId)
@@ -195,7 +199,7 @@ export async function DELETE(
     )
   }
 
-  const { data: project } = await supabase
+  const { data: project } = await admin
     .from('projects')
     .select('id')
     .eq('id', projectId)
@@ -206,7 +210,7 @@ export async function DELETE(
     return NextResponse.json({ error: 'Project not found' }, { status: 404 })
   }
 
-  const { data: task } = await supabase
+  const { data: task } = await admin
     .from('tasks')
     .select('id')
     .eq('id', taskId)
@@ -230,7 +234,7 @@ export async function DELETE(
     )
   }
 
-  const { data: timeLog } = await supabase
+  const { data: timeLog } = await admin
     .from('time_logs')
     .select('*')
     .eq('id', logId)
@@ -248,7 +252,7 @@ export async function DELETE(
     )
   }
 
-  const { error: deleteError } = await supabase
+  const { error: deleteError } = await admin
     .from('time_logs')
     .delete()
     .eq('id', logId)

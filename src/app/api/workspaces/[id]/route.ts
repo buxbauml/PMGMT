@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase-server'
+import { createClient, createAdminClient } from '@/lib/supabase-server'
 import { updateWorkspaceSchema } from '@/lib/validations/workspace'
 
 // GET /api/workspaces/[id] - Get a single workspace
@@ -19,8 +19,10 @@ export async function GET(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const admin = createAdminClient()
+
   // RLS will ensure user can only see workspaces they're a member of
-  const { data: workspace, error } = await supabase
+  const { data: workspace, error } = await admin
     .from('workspaces')
     .select('*')
     .eq('id', id)
@@ -53,6 +55,8 @@ export async function PATCH(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const admin = createAdminClient()
+
   // Parse and validate body
   let body: unknown
   try {
@@ -70,7 +74,7 @@ export async function PATCH(
   }
 
   // RLS ensures only owner can update
-  const { data: workspace, error: updateError } = await supabase
+  const { data: workspace, error: updateError } = await admin
     .from('workspaces')
     .update({
       name: parsed.data.name,
@@ -107,8 +111,10 @@ export async function DELETE(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const admin = createAdminClient()
+
   // Verify ownership before delete (RLS also enforces this)
-  const { data: workspace } = await supabase
+  const { data: workspace } = await admin
     .from('workspaces')
     .select('owner_id')
     .eq('id', id)
@@ -129,13 +135,13 @@ export async function DELETE(
   }
 
   // Clear last_active_workspace_id for all members referencing this workspace
-  await supabase
+  await admin
     .from('profiles')
     .update({ last_active_workspace_id: null })
     .eq('last_active_workspace_id', id)
 
   // CASCADE will handle workspace_members and workspace_invitations
-  const { error: deleteError } = await supabase
+  const { error: deleteError } = await admin
     .from('workspaces')
     .delete()
     .eq('id', id)

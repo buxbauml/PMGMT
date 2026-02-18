@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase-server'
+import { createClient, createAdminClient } from '@/lib/supabase-server'
 import { z } from 'zod'
 
 const transferOwnershipSchema = z.object({
@@ -22,6 +22,8 @@ export async function POST(
   if (authError || !user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
+
+  const admin = createAdminClient()
 
   // Parse request body
   let body
@@ -50,7 +52,7 @@ export async function POST(
   }
 
   // Fetch workspace and verify current user is the owner
-  const { data: workspace, error: workspaceError } = await supabase
+  const { data: workspace, error: workspaceError } = await admin
     .from('workspaces')
     .select('*')
     .eq('id', workspaceId)
@@ -68,7 +70,7 @@ export async function POST(
   }
 
   // Verify new owner is a member of the workspace
-  const { data: newOwnerMembership, error: memberError } = await supabase
+  const { data: newOwnerMembership, error: memberError } = await admin
     .from('workspace_members')
     .select('*')
     .eq('workspace_id', workspaceId)
@@ -84,7 +86,7 @@ export async function POST(
 
   // Perform the ownership transfer in a transaction-like manner
   // 1. Update the workspace owner
-  const { error: updateWorkspaceError } = await supabase
+  const { error: updateWorkspaceError } = await admin
     .from('workspaces')
     .update({ owner_id: new_owner_id })
     .eq('id', workspaceId)
@@ -97,7 +99,7 @@ export async function POST(
   }
 
   // 2. Update the new owner's role to 'owner'
-  const { error: updateNewOwnerError } = await supabase
+  const { error: updateNewOwnerError } = await admin
     .from('workspace_members')
     .update({ role: 'owner' })
     .eq('workspace_id', workspaceId)
@@ -117,7 +119,7 @@ export async function POST(
   }
 
   // 3. Downgrade the old owner to 'admin' role
-  const { error: updateOldOwnerError } = await supabase
+  const { error: updateOldOwnerError } = await admin
     .from('workspace_members')
     .update({ role: 'admin' })
     .eq('workspace_id', workspaceId)

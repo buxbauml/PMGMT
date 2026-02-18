@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase-server'
+import { createClient, createAdminClient } from '@/lib/supabase-server'
 import { createWorkspaceSchema } from '@/lib/validations/workspace'
 
 // GET /api/workspaces - List all workspaces for the authenticated user
@@ -15,8 +15,10 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const admin = createAdminClient()
+
   // Get workspaces where the user is a member
-  const { data: memberships, error: memberError } = await supabase
+  const { data: memberships, error: memberError } = await admin
     .from('workspace_members')
     .select('workspace_id, role, last_accessed_at')
     .eq('user_id', user.id)
@@ -34,7 +36,7 @@ export async function GET() {
 
   const workspaceIds = memberships.map((m) => m.workspace_id)
 
-  const { data: workspaces, error: wsError } = await supabase
+  const { data: workspaces, error: wsError } = await admin
     .from('workspaces')
     .select('*')
     .in('id', workspaceIds)
@@ -49,7 +51,7 @@ export async function GET() {
   }
 
   // Get last active workspace from profile
-  const { data: profile } = await supabase
+  const { data: profile } = await admin
     .from('profiles')
     .select('last_active_workspace_id')
     .eq('id', user.id)
@@ -91,36 +93,50 @@ export async function POST(request: NextRequest) {
   }
 
   const { name, description } = parsed.data
+  const admin = createAdminClient()
 
-  // Create workspace, add owner as member, and set as last active — all atomically
-  const { data: workspaceId, error: rpcError } = await supabase
-    .rpc('create_workspace_with_owner', {
-      p_name: name,
-      p_description: description || null,
-      p_owner_id: user.id,
-    })
-
-  if (rpcError) {
-    console.error('Workspace creation failed:', rpcError)
-    return NextResponse.json(
-      { error: `Failed to create workspace: ${rpcError.message}` },
-      { status: 500 }
-    )
-  }
-
-  // Fetch the created workspace to return full data
-  const { data: workspace, error: fetchError } = await supabase
+  // Create workspace
+  const { data: workspace, error: createError } = await admin
     .from('workspaces')
-    .select('*')
-    .eq('id', workspaceId)
+    .insert({
+      name,
+      description: description || null,
+      owner_id: user.id,
+    })
+    .select()
     .single()
 
-  if (fetchError || !workspace) {
+  if (createError) {
+    console.error('Workspace creation failed:', createError)
     return NextResponse.json(
-      { error: 'Workspace created but failed to fetch details' },
+      { error: `Failed to create workspace: ${createError.message}` },
       { status: 500 }
     )
   }
+
+  // Add creator as owner member
+  const { error: memberError } = await admin
+    .from('workspace_members')
+    .insert({
+      workspace_id: workspace.id,
+      user_id: user.id,
+      role: 'owner',
+    })
+
+  if (memberError) {
+    console.error('Workspace membership creation failed:', memberError)
+    await admin.from('workspaces').delete().eq('id', workspace.id)
+    return NextResponse.json(
+      { error: `Failed to create workspace membership: ${memberError.message}` },
+      { status: 500 }
+    )
+  }
+
+  // Set as last active workspace
+  await admin
+    .from('profiles')
+    .update({ last_active_workspace_id: workspace.id })
+    .eq('id', user.id)
 
   return NextResponse.json({ data: workspace }, { status: 201 })
 }

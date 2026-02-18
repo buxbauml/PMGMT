@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase-server'
+import { createClient, createAdminClient } from '@/lib/supabase-server'
 import { updateSprintSchema } from '@/lib/validations/sprint'
 import { computeSprintStatus } from '@/types/sprint'
 import { checkRateLimit, recordRateLimitAttempt } from '@/lib/rate-limit'
@@ -22,8 +22,10 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const admin = createAdminClient()
+
   // Verify workspace membership
-  const { data: membership } = await supabase
+  const { data: membership } = await admin
     .from('workspace_members')
     .select('role')
     .eq('workspace_id', workspaceId)
@@ -38,7 +40,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
   }
 
   // Fetch sprint
-  const { data: sprint, error: sprintError } = await supabase
+  const { data: sprint, error: sprintError } = await admin
     .from('sprints')
     .select(`
       *,
@@ -57,7 +59,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
   }
 
   // Fetch tasks in this sprint
-  const { data: tasks } = await supabase
+  const { data: tasks } = await admin
     .from('tasks')
     .select(`
       *,
@@ -142,8 +144,10 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const admin = createAdminClient()
+
   // Verify admin or owner
-  const { data: membership } = await supabase
+  const { data: membership } = await admin
     .from('workspace_members')
     .select('role')
     .eq('workspace_id', workspaceId)
@@ -165,7 +169,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   }
 
   // Verify project exists and is not archived
-  const { data: project } = await supabase
+  const { data: project } = await admin
     .from('projects')
     .select('id, archived')
     .eq('id', projectId)
@@ -278,7 +282,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
   updateData.updated_at = new Date().toISOString()
 
-  const { error: updateError } = await supabase
+  const { error: updateError } = await admin
     .from('sprints')
     .update(updateData)
     .eq('id', sprintId)
@@ -307,7 +311,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   }
 
   // Fetch updated sprint with joins
-  const { data: updatedSprint } = await supabase
+  const { data: updatedSprint } = await admin
     .from('sprints')
     .select(`
       *,
@@ -325,7 +329,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   }
 
   // Get task counts
-  const { data: tasks } = await supabase
+  const { data: tasks } = await admin
     .from('tasks')
     .select('id, status')
     .eq('sprint_id', sprintId)
@@ -375,8 +379,10 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const admin = createAdminClient()
+
   // Verify admin or owner
-  const { data: membership } = await supabase
+  const { data: membership } = await admin
     .from('workspace_members')
     .select('role')
     .eq('workspace_id', workspaceId)
@@ -398,7 +404,7 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
   }
 
   // Verify project is not archived
-  const { data: projectForDelete } = await supabase
+  const { data: projectForDelete } = await admin
     .from('projects')
     .select('id, archived')
     .eq('id', projectId)
@@ -436,7 +442,7 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
   }
 
   // Collect task IDs before moving them, so we can restore on failure
-  const { data: tasksInSprint } = await supabase
+  const { data: tasksInSprint } = await admin
     .from('tasks')
     .select('id')
     .eq('sprint_id', sprintId)
@@ -459,7 +465,7 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
   }
 
   // Delete the sprint
-  const { error: deleteError } = await supabase
+  const { error: deleteError } = await admin
     .from('sprints')
     .delete()
     .eq('id', sprintId)

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase-server'
+import { createClient, createAdminClient } from '@/lib/supabase-server'
 import { z } from 'zod'
 
 const updateRoleSchema = z.object({
@@ -23,8 +23,10 @@ export async function PATCH(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const admin = createAdminClient()
+
   // Verify requester is owner or admin
-  const { data: requesterMembership } = await supabase
+  const { data: requesterMembership } = await admin
     .from('workspace_members')
     .select('role')
     .eq('workspace_id', id)
@@ -55,7 +57,7 @@ export async function PATCH(
   }
 
   // Get target member
-  const { data: targetMember } = await supabase
+  const { data: targetMember } = await admin
     .from('workspace_members')
     .select('user_id, role')
     .eq('id', memberId)
@@ -85,7 +87,7 @@ export async function PATCH(
     )
   }
 
-  const { error: updateError } = await supabase
+  const { error: updateError } = await admin
     .from('workspace_members')
     .update({ role: parsed.data.role })
     .eq('id', memberId)
@@ -118,8 +120,10 @@ export async function DELETE(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const admin = createAdminClient()
+
   // Verify requester is owner or admin
-  const { data: requesterMembership } = await supabase
+  const { data: requesterMembership } = await admin
     .from('workspace_members')
     .select('role')
     .eq('workspace_id', id)
@@ -134,7 +138,7 @@ export async function DELETE(
   }
 
   // Get target member
-  const { data: targetMember } = await supabase
+  const { data: targetMember } = await admin
     .from('workspace_members')
     .select('user_id, role')
     .eq('id', memberId)
@@ -173,7 +177,7 @@ export async function DELETE(
   }
 
   // Clear last_active_workspace_id if needed
-  await supabase
+  await admin
     .from('profiles')
     .update({ last_active_workspace_id: null })
     .eq('id', targetMember.user_id)
@@ -213,7 +217,7 @@ export async function DELETE(
     // Tasks table may not exist yet - continue with member removal
   }
 
-  const { error: deleteError } = await supabase
+  const { error: deleteError } = await admin
     .from('workspace_members')
     .delete()
     .eq('id', memberId)

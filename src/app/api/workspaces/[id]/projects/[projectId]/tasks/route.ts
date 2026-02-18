@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase-server'
+import { createClient, createAdminClient } from '@/lib/supabase-server'
 import { createTaskSchema } from '@/lib/validations/task'
 import { checkRateLimit, recordRateLimitAttempt } from '@/lib/rate-limit'
 
@@ -20,8 +20,10 @@ export async function GET(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const admin = createAdminClient()
+
   // Verify user is a member of this workspace
-  const { data: membership } = await supabase
+  const { data: membership } = await admin
     .from('workspace_members')
     .select('role')
     .eq('workspace_id', workspaceId)
@@ -36,7 +38,7 @@ export async function GET(
   }
 
   // Verify project exists and belongs to this workspace
-  const { data: project } = await supabase
+  const { data: project } = await admin
     .from('projects')
     .select('id')
     .eq('id', projectId)
@@ -51,7 +53,7 @@ export async function GET(
   }
 
   // Fetch tasks with assignee and creator profile data via joins
-  const { data: tasks, error: tasksError } = await supabase
+  const { data: tasks, error: tasksError } = await admin
     .from('tasks')
     .select(`
       *,
@@ -107,8 +109,10 @@ export async function POST(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const admin = createAdminClient()
+
   // Verify user is a member of this workspace
-  const { data: membership } = await supabase
+  const { data: membership } = await admin
     .from('workspace_members')
     .select('role')
     .eq('workspace_id', workspaceId)
@@ -123,7 +127,7 @@ export async function POST(
   }
 
   // Verify project exists and belongs to this workspace
-  const { data: project } = await supabase
+  const { data: project } = await admin
     .from('projects')
     .select('id, archived')
     .eq('id', projectId)
@@ -234,7 +238,7 @@ export async function POST(
   }
 
   // Create the task
-  const { data: task, error: createError } = await supabase
+  const { data: task, error: createError } = await admin
     .from('tasks')
     .insert(insertData)
     .select()
@@ -288,10 +292,10 @@ export async function POST(
   }
 
   // Insert activity logs (non-blocking - don't fail the request if logging fails)
-  await supabase.from('activity_logs').insert(activityEntries)
+  await admin.from('activity_logs').insert(activityEntries)
 
   // Fetch the task with joined profile data to return enriched result
-  const { data: enrichedTask } = await supabase
+  const { data: enrichedTask } = await admin
     .from('tasks')
     .select(`
       *,

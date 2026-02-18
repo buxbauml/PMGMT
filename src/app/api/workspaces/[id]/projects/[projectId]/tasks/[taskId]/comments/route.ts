@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase-server'
+import { createClient, createAdminClient } from '@/lib/supabase-server'
 import { createCommentSchema } from '@/lib/validations/task'
 import { checkRateLimit, recordRateLimitAttempt } from '@/lib/rate-limit'
 
@@ -23,8 +23,10 @@ export async function POST(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const admin = createAdminClient()
+
   // Verify user is a member of this workspace
-  const { data: membership } = await supabase
+  const { data: membership } = await admin
     .from('workspace_members')
     .select('role')
     .eq('workspace_id', workspaceId)
@@ -39,7 +41,7 @@ export async function POST(
   }
 
   // Verify project belongs to workspace
-  const { data: project } = await supabase
+  const { data: project } = await admin
     .from('projects')
     .select('id, archived')
     .eq('id', projectId)
@@ -61,7 +63,7 @@ export async function POST(
   }
 
   // Verify task belongs to project
-  const { data: task } = await supabase
+  const { data: task } = await admin
     .from('tasks')
     .select('id')
     .eq('id', taskId)
@@ -110,7 +112,7 @@ export async function POST(
   const { content } = parsed.data
 
   // Insert comment
-  const { data: newComment, error: insertError } = await supabase
+  const { data: newComment, error: insertError } = await admin
     .from('comments')
     .insert({
       task_id: taskId,

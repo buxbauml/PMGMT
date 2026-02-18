@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase-server'
+import { createClient, createAdminClient } from '@/lib/supabase-server'
 import { updateProjectSchema } from '@/lib/validations/project'
 
 // GET /api/workspaces/[id]/projects/[projectId] - Get a single project
@@ -19,8 +19,10 @@ export async function GET(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const admin = createAdminClient()
+
   // Verify user is a member of this workspace
-  const { data: membership } = await supabase
+  const { data: membership } = await admin
     .from('workspace_members')
     .select('role')
     .eq('workspace_id', workspaceId)
@@ -35,7 +37,7 @@ export async function GET(
   }
 
   // Fetch project (RLS also enforces membership)
-  const { data: project, error: projectError } = await supabase
+  const { data: project, error: projectError } = await admin
     .from('projects')
     .select('*')
     .eq('id', projectId)
@@ -54,12 +56,12 @@ export async function GET(
   let completedTaskCount = 0
 
   try {
-    const { count: totalCount } = await supabase
+    const { count: totalCount } = await admin
       .from('tasks')
       .select('*', { count: 'exact', head: true })
       .eq('project_id', projectId)
 
-    const { count: completedCount } = await supabase
+    const { count: completedCount } = await admin
       .from('tasks')
       .select('*', { count: 'exact', head: true })
       .eq('project_id', projectId)
@@ -100,8 +102,10 @@ export async function PATCH(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const admin = createAdminClient()
+
   // Verify user is a member of this workspace
-  const { data: membership } = await supabase
+  const { data: membership } = await admin
     .from('workspace_members')
     .select('role')
     .eq('workspace_id', workspaceId)
@@ -116,7 +120,7 @@ export async function PATCH(
   }
 
   // Verify project exists and belongs to this workspace
-  const { data: existingProject } = await supabase
+  const { data: existingProject } = await admin
     .from('projects')
     .select('id')
     .eq('id', projectId)
@@ -149,7 +153,7 @@ export async function PATCH(
   const { name, description, start_date, end_date } = parsed.data
 
   // Update project
-  const { data: project, error: updateError } = await supabase
+  const { data: project, error: updateError } = await admin
     .from('projects')
     .update({
       name,
@@ -220,8 +224,10 @@ export async function DELETE(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const admin = createAdminClient()
+
   // Verify user is a member of this workspace
-  const { data: membership } = await supabase
+  const { data: membership } = await admin
     .from('workspace_members')
     .select('role')
     .eq('workspace_id', workspaceId)
@@ -236,7 +242,7 @@ export async function DELETE(
   }
 
   // Verify project exists and belongs to this workspace
-  const { data: existingProject } = await supabase
+  const { data: existingProject } = await admin
     .from('projects')
     .select('id')
     .eq('id', projectId)
@@ -281,7 +287,7 @@ export async function DELETE(
   }
 
   // Delete project
-  const { error: deleteError } = await supabase
+  const { error: deleteError } = await admin
     .from('projects')
     .delete()
     .eq('id', projectId)

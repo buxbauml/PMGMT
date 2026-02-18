@@ -1033,7 +1033,7 @@ No new backend needed. We reuse:
 ## Deployment
 
 **Deployed:** 2026-02-17
-**Production URL:** https://pmgmt.vercel.app
+**Production URL:** https://pmgmt-eight.vercel.app
 **Git Commit:** e074ba7
 **Git Tag:** v1.7.0-PROJ-7
 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase-server'
+import { createClient, createAdminClient } from '@/lib/supabase-server'
 import { updateTaskSchema } from '@/lib/validations/task'
 import { checkRateLimit, recordRateLimitAttempt } from '@/lib/rate-limit'
 
@@ -39,8 +39,10 @@ export async function GET(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const admin = createAdminClient()
+
   // Verify user is a member of this workspace
-  const { data: membership } = await supabase
+  const { data: membership } = await admin
     .from('workspace_members')
     .select('role')
     .eq('workspace_id', workspaceId)
@@ -55,7 +57,7 @@ export async function GET(
   }
 
   // Verify project exists and belongs to this workspace
-  const { data: project } = await supabase
+  const { data: project } = await admin
     .from('projects')
     .select('id')
     .eq('id', projectId)
@@ -70,7 +72,7 @@ export async function GET(
   }
 
   // Fetch the task with joined profile data
-  const { data: task, error: taskError } = await supabase
+  const { data: task, error: taskError } = await admin
     .from('tasks')
     .select(`
       *,
@@ -109,8 +111,10 @@ export async function PATCH(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const admin = createAdminClient()
+
   // Verify user is a member of this workspace
-  const { data: membership } = await supabase
+  const { data: membership } = await admin
     .from('workspace_members')
     .select('role')
     .eq('workspace_id', workspaceId)
@@ -125,7 +129,7 @@ export async function PATCH(
   }
 
   // Verify project exists and belongs to this workspace
-  const { data: project } = await supabase
+  const { data: project } = await admin
     .from('projects')
     .select('id, archived')
     .eq('id', projectId)
@@ -163,7 +167,7 @@ export async function PATCH(
   }
 
   // Fetch existing task to compare status changes
-  const { data: existingTask } = await supabase
+  const { data: existingTask } = await admin
     .from('tasks')
     .select('id, status, assignee_id')
     .eq('id', taskId)
@@ -256,7 +260,7 @@ export async function PATCH(
   }
 
   // Update the task (RLS ensures workspace membership)
-  const { error: updateError } = await supabase
+  const { error: updateError } = await admin
     .from('tasks')
     .update(updateData)
     .eq('id', taskId)
@@ -348,11 +352,11 @@ export async function PATCH(
 
   // Insert activity logs (non-blocking - don't fail the request if logging fails)
   if (activityEntries.length > 0) {
-    await supabase.from('activity_logs').insert(activityEntries)
+    await admin.from('activity_logs').insert(activityEntries)
   }
 
   // Fetch updated task with joined data
-  const { data: updatedTask } = await supabase
+  const { data: updatedTask } = await admin
     .from('tasks')
     .select(`
       *,
@@ -390,8 +394,10 @@ export async function DELETE(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const admin = createAdminClient()
+
   // Verify user is a member of this workspace and check their role
-  const { data: membership } = await supabase
+  const { data: membership } = await admin
     .from('workspace_members')
     .select('role')
     .eq('workspace_id', workspaceId)
@@ -406,7 +412,7 @@ export async function DELETE(
   }
 
   // Verify project exists and belongs to this workspace
-  const { data: projectForDelete } = await supabase
+  const { data: projectForDelete } = await admin
     .from('projects')
     .select('id, archived')
     .eq('id', projectId)
@@ -444,7 +450,7 @@ export async function DELETE(
   }
 
   // Fetch the task to check ownership
-  const { data: task } = await supabase
+  const { data: task } = await admin
     .from('tasks')
     .select('id, created_by')
     .eq('id', taskId)
@@ -471,18 +477,18 @@ export async function DELETE(
 
   // Clean up attachment files from Supabase Storage before deleting the task
   // (ON DELETE CASCADE removes the DB records, but storage files need explicit cleanup)
-  const { data: attachments } = await supabase
+  const { data: attachments } = await admin
     .from('task_attachments')
     .select('storage_path')
     .eq('task_id', taskId)
 
   if (attachments && attachments.length > 0) {
     const paths = attachments.map((a) => a.storage_path)
-    await supabase.storage.from('task-attachments').remove(paths)
+    await admin.storage.from('task-attachments').remove(paths)
   }
 
   // Delete the task (RLS also enforces this; CASCADE removes attachment records)
-  const { error: deleteError } = await supabase
+  const { error: deleteError } = await admin
     .from('tasks')
     .delete()
     .eq('id', taskId)

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase-server'
+import { createClient, createAdminClient } from '@/lib/supabase-server'
 import { updateCommentSchema } from '@/lib/validations/task'
 import { checkRateLimit, recordRateLimitAttempt } from '@/lib/rate-limit'
 
@@ -28,8 +28,10 @@ export async function PATCH(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const admin = createAdminClient()
+
   // Verify user is a member of this workspace
-  const { data: membership } = await supabase
+  const { data: membership } = await admin
     .from('workspace_members')
     .select('role')
     .eq('workspace_id', workspaceId)
@@ -44,7 +46,7 @@ export async function PATCH(
   }
 
   // Verify project belongs to workspace
-  const { data: project } = await supabase
+  const { data: project } = await admin
     .from('projects')
     .select('id')
     .eq('id', projectId)
@@ -59,7 +61,7 @@ export async function PATCH(
   }
 
   // Verify task belongs to project
-  const { data: task } = await supabase
+  const { data: task } = await admin
     .from('tasks')
     .select('id')
     .eq('id', taskId)
@@ -74,7 +76,7 @@ export async function PATCH(
   }
 
   // Fetch the comment
-  const { data: comment } = await supabase
+  const { data: comment } = await admin
     .from('comments')
     .select('*')
     .eq('id', commentId)
@@ -152,7 +154,7 @@ export async function PATCH(
   const { content } = parsed.data
 
   // Update comment
-  const { error: updateError } = await supabase
+  const { error: updateError } = await admin
     .from('comments')
     .update({ content, updated_at: new Date().toISOString() })
     .eq('id', commentId)
@@ -168,7 +170,7 @@ export async function PATCH(
   recordRateLimitAttempt(user.id, 'edit-comment')
 
   // Fetch updated comment with joined data
-  const { data: updatedComment } = await supabase
+  const { data: updatedComment } = await admin
     .from('comments')
     .select(`
       *,
@@ -221,8 +223,10 @@ export async function DELETE(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const admin = createAdminClient()
+
   // Verify user is a member of this workspace and get role
-  const { data: membership } = await supabase
+  const { data: membership } = await admin
     .from('workspace_members')
     .select('role')
     .eq('workspace_id', workspaceId)
@@ -237,7 +241,7 @@ export async function DELETE(
   }
 
   // Verify project belongs to workspace
-  const { data: project } = await supabase
+  const { data: project } = await admin
     .from('projects')
     .select('id')
     .eq('id', projectId)
@@ -252,7 +256,7 @@ export async function DELETE(
   }
 
   // Verify task belongs to project
-  const { data: task } = await supabase
+  const { data: task } = await admin
     .from('tasks')
     .select('id')
     .eq('id', taskId)
@@ -267,7 +271,7 @@ export async function DELETE(
   }
 
   // Fetch the comment
-  const { data: comment } = await supabase
+  const { data: comment } = await admin
     .from('comments')
     .select('*')
     .eq('id', commentId)
@@ -294,7 +298,7 @@ export async function DELETE(
 
   // Soft-delete: set deleted = true and replace content with placeholder
   // (content: '[deleted]' satisfies the DB CHECK constraint requiring length >= 1)
-  const { error: deleteError } = await supabase
+  const { error: deleteError } = await admin
     .from('comments')
     .update({ deleted: true, content: '[deleted]', updated_at: new Date().toISOString() })
     .eq('id', commentId)

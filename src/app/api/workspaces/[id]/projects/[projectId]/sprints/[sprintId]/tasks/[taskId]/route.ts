@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase-server'
+import { createClient, createAdminClient } from '@/lib/supabase-server'
 import { checkRateLimit, recordRateLimitAttempt } from '@/lib/rate-limit'
 
 type RouteParams = {
@@ -26,8 +26,10 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const admin = createAdminClient()
+
   // Verify workspace membership
-  const { data: membership } = await supabase
+  const { data: membership } = await admin
     .from('workspace_members')
     .select('role')
     .eq('workspace_id', workspaceId)
@@ -58,7 +60,7 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
   }
 
   // Verify sprint exists
-  const { data: sprint } = await supabase
+  const { data: sprint } = await admin
     .from('sprints')
     .select('id')
     .eq('id', sprintId)
@@ -73,7 +75,7 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
   }
 
   // Set task's sprint_id to null (move to backlog)
-  const { error: updateError } = await supabase
+  const { error: updateError } = await admin
     .from('tasks')
     .update({ sprint_id: null })
     .eq('id', taskId)

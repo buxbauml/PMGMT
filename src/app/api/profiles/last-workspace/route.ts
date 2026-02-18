@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase-server'
+import { createClient, createAdminClient } from '@/lib/supabase-server'
 import { z } from 'zod'
 
 const updateLastWorkspaceSchema = z.object({
@@ -19,6 +19,8 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const admin = createAdminClient()
+
   let body: unknown
   try {
     body = await request.json()
@@ -35,7 +37,7 @@ export async function PATCH(request: NextRequest) {
   }
 
   // Verify user is a member of the workspace
-  const { data: membership } = await supabase
+  const { data: membership } = await admin
     .from('workspace_members')
     .select('id')
     .eq('workspace_id', parsed.data.workspaceId)
@@ -50,7 +52,7 @@ export async function PATCH(request: NextRequest) {
   }
 
   // Update profile
-  const { error: updateError } = await supabase
+  const { error: updateError } = await admin
     .from('profiles')
     .update({ last_active_workspace_id: parsed.data.workspaceId })
     .eq('id', user.id)
@@ -63,7 +65,7 @@ export async function PATCH(request: NextRequest) {
   }
 
   // Also update last_accessed_at on the membership
-  await supabase
+  await admin
     .from('workspace_members')
     .update({ last_accessed_at: new Date().toISOString() })
     .eq('workspace_id', parsed.data.workspaceId)

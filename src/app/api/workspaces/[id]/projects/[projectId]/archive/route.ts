@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase-server'
+import { createClient, createAdminClient } from '@/lib/supabase-server'
 
 // POST /api/workspaces/[id]/projects/[projectId]/archive - Archive or unarchive a project
 // Body: { archived: true } or { archived: false }
@@ -20,8 +20,10 @@ export async function POST(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const admin = createAdminClient()
+
   // Verify user is a member and check role
-  const { data: membership } = await supabase
+  const { data: membership } = await admin
     .from('workspace_members')
     .select('role')
     .eq('workspace_id', workspaceId)
@@ -66,7 +68,7 @@ export async function POST(
   const archived = (body as Record<string, unknown>).archived as boolean
 
   // Verify project exists and belongs to this workspace
-  const { data: existingProject } = await supabase
+  const { data: existingProject } = await admin
     .from('projects')
     .select('id, archived')
     .eq('id', projectId)
@@ -81,7 +83,7 @@ export async function POST(
   }
 
   // Update archived status
-  const { data: project, error: updateError } = await supabase
+  const { data: project, error: updateError } = await admin
     .from('projects')
     .update({ archived })
     .eq('id', projectId)

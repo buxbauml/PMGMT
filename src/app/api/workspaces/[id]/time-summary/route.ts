@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase-server'
+import { createClient, createAdminClient } from '@/lib/supabase-server'
 
 type TimeSummaryParams = Promise<{ id: string }>
 
@@ -21,7 +21,9 @@ export async function GET(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const { data: membership } = await supabase
+  const admin = createAdminClient()
+
+  const { data: membership } = await admin
     .from('workspace_members')
     .select('role')
     .eq('workspace_id', workspaceId)
@@ -73,7 +75,7 @@ export async function GET(
       )
     }
 
-    const { data: teamLogs, error: teamError } = await supabase
+    const { data: teamLogs, error: teamError } = await admin
       .from('time_logs')
       .select(`
         user_id,
@@ -144,7 +146,7 @@ export async function GET(
   }
 
   // Personal view
-  const { data: personalLogs, error: personalError } = await supabase
+  const { data: personalLogs, error: personalError } = await admin
     .from('time_logs')
     .select(`
       *,

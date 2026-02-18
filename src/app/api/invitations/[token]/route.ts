@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase-server'
+import { createClient, createAdminClient } from '@/lib/supabase-server'
 
 // GET /api/invitations/[token] - Get invitation details (for the invite accept page)
 export async function GET(
@@ -8,6 +8,7 @@ export async function GET(
 ) {
   const { token } = await params
   const supabase = await createClient()
+  const admin = createAdminClient()
 
   // Invitation info is semi-public (anyone with the token can view basic details)
   // But we use RLS + direct query for security
@@ -17,7 +18,7 @@ export async function GET(
   } = await supabase.auth.getUser()
 
   // Query the invitation with workspace info
-  const { data: invitation, error } = await supabase
+  const { data: invitation, error } = await admin
     .from('workspace_invitations')
     .select(`
       id,
@@ -52,7 +53,7 @@ export async function GET(
   if (invitation.status === 'expired' || now > expiresAt) {
     // Mark as expired if not already
     if (invitation.status !== 'expired') {
-      await supabase
+      await admin
         .from('workspace_invitations')
         .update({ status: 'expired' })
         .eq('id', invitation.id)
@@ -76,7 +77,7 @@ export async function GET(
   // Check if user is already a member
   let alreadyMember = false
   if (user) {
-    const { data: existingMember } = await supabase
+    const { data: existingMember } = await admin
       .from('workspace_members')
       .select('id')
       .eq('workspace_id', invitation.workspace_id)

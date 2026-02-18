@@ -1,6 +1,8 @@
 import { createServerClient } from '@supabase/ssr'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 
+// Cookie-based client for auth operations (reads user session from cookies)
 export async function createClient() {
   const cookieStore = await cookies()
 
@@ -23,6 +25,21 @@ export async function createClient() {
             // user sessions.
           }
         },
+      },
+    }
+  )
+}
+
+// Service role client for database operations (bypasses RLS)
+// Use this for all CRUD operations in API routes after validating auth via createClient()
+export function createAdminClient() {
+  return createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
       },
     }
   )

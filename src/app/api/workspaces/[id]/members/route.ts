@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase-server'
+import { createClient, createAdminClient } from '@/lib/supabase-server'
 
 // GET /api/workspaces/[id]/members - List workspace members
 export async function GET(
@@ -18,8 +18,10 @@ export async function GET(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const admin = createAdminClient()
+
   // Verify user is a member of this workspace (RLS also enforces this)
-  const { data: membership } = await supabase
+  const { data: membership } = await admin
     .from('workspace_members')
     .select('role')
     .eq('workspace_id', id)
@@ -34,7 +36,7 @@ export async function GET(
   }
 
   // Get members with profile info
-  const { data: members, error: membersError } = await supabase
+  const { data: members, error: membersError } = await admin
     .from('workspace_members')
     .select(`
       id,

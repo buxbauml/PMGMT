@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase-server'
+import { createClient, createAdminClient } from '@/lib/supabase-server'
 import { createProjectSchema } from '@/lib/validations/project'
 import { checkRateLimit, recordRateLimitAttempt } from '@/lib/rate-limit'
 
@@ -20,8 +20,10 @@ export async function GET(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const admin = createAdminClient()
+
   // Verify user is a member of this workspace
-  const { data: membership } = await supabase
+  const { data: membership } = await admin
     .from('workspace_members')
     .select('role')
     .eq('workspace_id', workspaceId)
@@ -40,7 +42,7 @@ export async function GET(
   const includeArchived = searchParams.get('include_archived') === 'true'
 
   // Build query
-  let query = supabase
+  let query = admin
     .from('projects')
     .select('*')
     .eq('workspace_id', workspaceId)
@@ -68,13 +70,13 @@ export async function GET(
     const projectIds = (projects || []).map((p) => p.id)
     if (projectIds.length > 0) {
       // Get total task counts per project
-      const { data: totalCounts } = await supabase
+      const { data: totalCounts } = await admin
         .from('tasks')
         .select('project_id')
         .in('project_id', projectIds)
 
       // Get completed task counts per project
-      const { data: completedCounts } = await supabase
+      const { data: completedCounts } = await admin
         .from('tasks')
         .select('project_id')
         .in('project_id', projectIds)
@@ -136,6 +138,8 @@ export async function POST(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const admin = createAdminClient()
+
   // Rate limiting: max 20 projects created per hour
   const rateLimit = checkRateLimit(user.id, {
     prefix: 'create-project',
@@ -153,7 +157,7 @@ export async function POST(
   }
 
   // Verify user is a member of this workspace
-  const { data: membership } = await supabase
+  const { data: membership } = await admin
     .from('workspace_members')
     .select('role')
     .eq('workspace_id', workspaceId)
@@ -186,7 +190,7 @@ export async function POST(
   const { name, description, start_date, end_date } = parsed.data
 
   // Create project
-  const { data: project, error: createError } = await supabase
+  const { data: project, error: createError } = await admin
     .from('projects')
     .insert({
       workspace_id: workspaceId,

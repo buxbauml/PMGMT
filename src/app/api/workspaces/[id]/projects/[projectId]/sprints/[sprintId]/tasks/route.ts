@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase-server'
+import { createClient, createAdminClient } from '@/lib/supabase-server'
 import { checkRateLimit, recordRateLimitAttempt } from '@/lib/rate-limit'
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -22,8 +22,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const admin = createAdminClient()
+
   // Verify workspace membership
-  const { data: membership } = await supabase
+  const { data: membership } = await admin
     .from('workspace_members')
     .select('role')
     .eq('workspace_id', workspaceId)
@@ -54,7 +56,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   }
 
   // Verify sprint exists
-  const { data: sprint } = await supabase
+  const { data: sprint } = await admin
     .from('sprints')
     .select('id')
     .eq('id', sprintId)
@@ -102,7 +104,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   }
 
   // Update tasks to assign them to this sprint
-  const { error: updateError } = await supabase
+  const { error: updateError } = await admin
     .from('tasks')
     .update({ sprint_id: sprintId })
     .in('id', taskIds)
