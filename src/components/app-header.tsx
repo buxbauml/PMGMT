@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Settings, LogOut, Clock } from 'lucide-react'
+import { Settings, LogOut, Clock, BarChart3 } from 'lucide-react'
 import type { Workspace } from '@/types/workspace'
 
 import { Button } from '@/components/ui/button'
@@ -62,6 +62,23 @@ export function AppHeader({
                 </Button>
               </TooltipTrigger>
               <TooltipContent>Time tracking</TooltipContent>
+            </Tooltip>
+          )}
+          {activeWorkspace && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                  asChild
+                >
+                  <Link href="/reports" aria-label="Reports">
+                    <BarChart3 className="h-4 w-4" />
+                  </Link>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Reports</TooltipContent>
             </Tooltip>
           )}
           {activeWorkspace && (
