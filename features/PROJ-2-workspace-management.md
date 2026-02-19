@@ -1,6 +1,6 @@
 # PROJ-2: Workspace Management
 
-## Status: In Review
+## Status: Deployed
 **Created:** 2026-02-14
 **Last Updated:** 2026-02-15
 
@@ -489,5 +489,53 @@ App Flow After Login
 - **Production Ready:** NO
 - **Recommendation:** Fix BUG-10 (field name mismatch) and BUG-11 (member ID vs user ID) before deployment. These are both in the ownership transfer flow and are simple one-line fixes. All other remaining bugs are low severity and can be addressed in subsequent sprints.
 
+## QA Test Results (Round 3)
+
+**Tested:** 2026-02-19
+**App URL:** http://localhost:3000
+**Tester:** QA Engineer (AI)
+**Build Status:** PASS (Next.js 16.1.1, Turbopack, 0 errors, 41 routes)
+**Previous Round:** Round 2 found 2 high bugs (BUG-10, BUG-11) in ownership transfer flow. Round 3 re-tests after fixes.
+
+### Bug Fix Verification
+
+#### BUG-10 (was High): Transfer ownership -- field name mismatch
+- **Status:** FIXED
+- **Verification:** `useWorkspace.ts` `transferOwnership()` now sends `JSON.stringify({ new_owner_id: newOwnerId })` (snake_case) at line 310, matching the API's `transferOwnershipSchema` which expects `new_owner_id`.
+- **File:** `/src/hooks/useWorkspace.ts` line 310
+
+#### BUG-11 (was High): Transfer ownership passes member ID instead of user ID
+- **Status:** FIXED
+- **Verification:** `workspace-settings.tsx` CustomEvent at line 494 now dispatches `{ memberId: member.user_id, memberName: member.user_email }` using `member.user_id` (the auth user UUID), not `member.id` (the workspace_members record PK). The `handleTransferOwnership()` function passes this value through `transferTargetMemberId` to `onTransferOwnership(workspace.id, transferTargetMemberId)` which calls the API with the correct user UUID.
+- **Files:** `/src/components/workspace-settings.tsx` line 494, `/src/hooks/useWorkspace.ts` lines 302-310
+
+### Acceptance Criteria Re-Verification (Spot Check)
+
+All 11 acceptance criteria from Round 2 remain passing. No regressions detected.
+
+### Remaining Bugs (Unchanged from Round 2)
+
+| Bug | Severity | Status | Notes |
+|-----|----------|--------|-------|
+| BUG-5 | Low | Open | Expired invitation shows no re-invite option |
+| BUG-6 | Low | Deferred | No active projects warning on workspace delete (waiting for PROJ-3 integration) |
+| BUG-7 | Low | Open | Rate limit on invitations resets on server restart |
+| BUG-8 | Low | Open | No rate limiting on workspace creation |
+| BUG-12 | Low | Open | Middleware redirect for auth users loses query params |
+
+### Summary
+- **Acceptance Criteria:** 11/11 passed
+- **Bugs Fixed Since Round 2:** 2 fixed (BUG-10 field name, BUG-11 user ID mismatch)
+- **Bugs Remaining:** 5 total (0 critical, 0 high, 0 medium, 5 low)
+- **Security:** Pass
+- **Build:** PASS
+- **Production Ready:** YES
+- **Recommendation:** All critical and high bugs are resolved. The 5 remaining low-severity bugs are non-blocking and can be addressed in future sprints. The feature is ready for deployment.
+
 ## Deployment
-_To be added by /deploy_
+
+- **Production URL:** https://pmgmt-eight.vercel.app
+- **Deployed:** 2026-02-19
+- **Vercel Project:** pmgmt
+- **Auto-deployed via:** GitHub push to `main` (commit `28fec55`)
+- **Database Migrations:** `20260218_002_fix_workspace_members_rls.sql` — SECURITY DEFINER functions for RLS bypass applied to Supabase

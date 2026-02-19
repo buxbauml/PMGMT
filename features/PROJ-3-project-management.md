@@ -449,4 +449,8 @@ No new packages required. Using existing project dependencies:
 - **Recommendation:** All critical and medium bugs from previous QA runs have been resolved. The 2 remaining bugs are both low severity and can be addressed in a future sprint. The feature is ready for deployment.
 
 ## Deployment
-_To be added by /deploy_
+
+- **Production URL:** https://pmgmt-eight.vercel.app
+- **Deployed:** 2026-02-19
+- **Vercel Project:** pmgmt
+- **Auto-deployed via:** GitHub push to `main` (commit `28fec55`)

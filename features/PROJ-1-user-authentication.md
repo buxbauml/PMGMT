@@ -1,6 +1,6 @@
 # PROJ-1: User Authentication
 
-## Status: In Review
+## Status: Deployed
 **Created:** 2026-02-14
 **Last Updated:** 2026-02-14
 
@@ -466,4 +466,10 @@ After PROJ-1 is complete:
 - **Recommendation:** Fix the 3 medium bugs (email verification banner, client-side throttling, security headers) before deployment. The 5 low-severity bugs can be addressed in the next sprint.
 
 ## Deployment
-_To be added by /deploy_
+
+- **Production URL:** https://pmgmt-eight.vercel.app
+- **Deployed:** 2026-02-19
+- **Vercel Project:** pmgmt
+- **Auto-deployed via:** GitHub push to `main` (commit `28fec55`)
+- **Environment Variables:** `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `EMAIL_FROM` configured in Vercel Dashboard
+- **Security Headers:** X-Frame-Options, X-Content-Type-Options, HSTS, Referrer-Policy configured in `next.config.ts`

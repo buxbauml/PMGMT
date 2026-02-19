@@ -573,4 +573,8 @@ Tasks table gets a new optional field:
 - **Recommendation:** Deploy. The 3 remaining low-severity bugs (BUG-5, BUG-6, BUG-7) are all missing error feedback on failure paths for sprint deletion, reopen, and task removal. These are non-blocking UX polish items that can be addressed in a follow-up sprint.
 
 ## Deployment
-_To be added by /deploy_
+
+- **Production URL:** https://pmgmt-eight.vercel.app
+- **Deployed:** 2026-02-19
+- **Vercel Project:** pmgmt
+- **Auto-deployed via:** GitHub push to `main` (commit `28fec55`)

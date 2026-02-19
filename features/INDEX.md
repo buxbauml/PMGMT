@@ -21,7 +21,7 @@
 | PROJ-7 | Kanban Board View | Deployed | [PROJ-7-kanban-board.md](PROJ-7-kanban-board.md) | 2026-02-14 |
 | PROJ-8 | File Attachments | Deployed | [PROJ-8-file-attachments.md](PROJ-8-file-attachments.md) | 2026-02-14 |
 | PROJ-9 | Time Tracking | Deployed | [PROJ-9-time-tracking.md](PROJ-9-time-tracking.md) | 2026-02-14 |
-| PROJ-10 | Reporting Dashboard | In Review | [PROJ-10-reporting-dashboard.md](PROJ-10-reporting-dashboard.md) | 2026-02-14 |
+| PROJ-10 | Reporting Dashboard | Deployed | [PROJ-10-reporting-dashboard.md](PROJ-10-reporting-dashboard.md) | 2026-02-14 |
 
 <!-- Add features above this line -->
 

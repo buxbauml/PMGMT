@@ -495,4 +495,8 @@ Each activity event contains:
 - **Recommendation:** All critical, high, and medium bugs from the previous QA round have been fixed. The feature is ready for deployment.
 
 ## Deployment
-_To be added by /deploy_
+
+- **Production URL:** https://pmgmt-eight.vercel.app
+- **Deployed:** 2026-02-19
+- **Vercel Project:** pmgmt
+- **Auto-deployed via:** GitHub push to `main` (commit `28fec55`)
