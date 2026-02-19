@@ -245,8 +245,9 @@ export async function POST(
     .single()
 
   if (createError) {
+    console.error('Task creation error:', createError.message, createError.code, createError.details)
     return NextResponse.json(
-      { error: 'Failed to create task' },
+      { error: `Failed to create task: ${createError.message}` },
       { status: 500 }
     )
   }
