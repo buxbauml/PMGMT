@@ -185,7 +185,7 @@ export async function POST(
   // If assignee_id is provided, verify they are a workspace member
   const cleanAssigneeId = assignee_id && assignee_id !== '' ? assignee_id : null
   if (cleanAssigneeId) {
-    const { data: assigneeMembership } = await supabase
+    const { data: assigneeMembership } = await admin
       .from('workspace_members')
       .select('id')
       .eq('workspace_id', workspaceId)
@@ -203,7 +203,7 @@ export async function POST(
   // If sprint_id is provided, verify the sprint exists in this project
   const cleanSprintId = sprint_id && sprint_id !== '' ? sprint_id : null
   if (cleanSprintId) {
-    const { data: sprint } = await supabase
+    const { data: sprint } = await admin
       .from('sprints')
       .select('id')
       .eq('id', cleanSprintId)
@@ -273,7 +273,7 @@ export async function POST(
   // If task is created with an assignee, also log the assignment with display name
   if (cleanAssigneeId) {
     let assigneeName: string = cleanAssigneeId
-    const { data: assigneeProfile } = await supabase
+    const { data: assigneeProfile } = await admin
       .from('profiles')
       .select('full_name')
       .eq('id', cleanAssigneeId)
