@@ -20,7 +20,7 @@ export async function GET(
 
   const admin = createAdminClient()
 
-  // Verify user is a member of this workspace (RLS also enforces this)
+  // Verify user is a member of this workspace
   const { data: membership } = await admin
     .from('workspace_members')
     .select('role')
@@ -35,41 +35,45 @@ export async function GET(
     )
   }
 
-  // Get members with profile info
+  // Get workspace members
   const { data: members, error: membersError } = await admin
     .from('workspace_members')
-    .select(`
-      id,
-      workspace_id,
-      user_id,
-      role,
-      joined_at,
-      last_accessed_at,
-      profiles:user_id (
-        email,
-        full_name,
-        avatar_url
-      )
-    `)
+    .select('id, workspace_id, user_id, role, joined_at, last_accessed_at')
     .eq('workspace_id', id)
     .order('joined_at', { ascending: true })
     .limit(100)
 
   if (membersError) {
+    console.error('Members fetch error:', membersError.message)
     return NextResponse.json(
-      { error: 'Failed to fetch members' },
+      { error: `Failed to fetch members: ${membersError.message}` },
       { status: 500 }
     )
   }
 
-  // Get email from auth.users via the user's own session
-  // We need to enrich with email - fetch from profiles isn't enough
-  // For now, we return what we have. Email will come from a joined query
-  // or we fetch user emails separately.
+  // Fetch profiles separately to avoid FK join issues
+  const userIds = (members ?? []).map((m) => m.user_id)
+  const profileMap = new Map<string, { email: string; full_name: string; avatar_url: string | null }>()
 
-  // Flatten the profiles join
-  const enrichedMembers = (members || []).map((member) => {
-    const profile = member.profiles as unknown as { email: string | null; full_name: string | null; avatar_url: string | null } | null
+  if (userIds.length > 0) {
+    const { data: profiles } = await admin
+      .from('profiles')
+      .select('id, email, full_name, avatar_url')
+      .in('id', userIds)
+      .limit(100)
+
+    for (const profile of profiles ?? []) {
+      profileMap.set(profile.id, {
+        email: profile.email || '',
+        full_name: profile.full_name || '',
+        avatar_url: profile.avatar_url || null,
+      })
+    }
+  }
+
+  // Combine members with profile data
+  const enrichedMembers = (members ?? []).map((member) => {
+    const profile = profileMap.get(member.user_id)
     return {
       id: member.id,
       workspace_id: member.workspace_id,
