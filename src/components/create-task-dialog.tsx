@@ -182,8 +182,8 @@ export function CreateTaskDialog({
                     </span>
                   </FormLabel>
                   <Select
-                    onValueChange={field.onChange}
-                    value={field.value ?? ''}
+                    onValueChange={(val) => field.onChange(val === 'unassigned' ? '' : val)}
+                    value={field.value || 'unassigned'}
                   >
                     <FormControl>
                       <SelectTrigger>
